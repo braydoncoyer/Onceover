@@ -82,6 +82,10 @@ await shoot('07-interaction', 'chrome=0', {
     await page.waitForTimeout(300);
   },
 });
+// Header, file header and rail rows up close, to judge icon weight.
+await shoot('detail-icons', 'chrome=0&viewed=status-labels', {
+  clip: async () => ({ x: 0, y: 0, width: 720, height: 300 }),
+});
 await shoot('detail-linear', 'chrome=0&rail=collapsed&file=use-ride-history', {
   width: 1200,
   clip: cardClip('use-ride-history', { top: 0, height: 760, width: 1100 }),

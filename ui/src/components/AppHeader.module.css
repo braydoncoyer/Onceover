@@ -113,10 +113,14 @@
   height: var(--size-icon);
   transform: rotate(-90deg);
 }
-.ringTrack {
-  stroke: var(--color-hairline-strong);
+.ringOuter {
+  stroke: var(--color-text-quaternary);
+  transition: stroke var(--duration-slow) var(--ease-out);
 }
-.ringValue {
+.ringActive .ringOuter {
+  stroke: var(--color-added);
+}
+.ringPie {
   stroke: var(--color-added);
   transition: stroke-dashoffset var(--duration-slow) var(--ease-out);
 }

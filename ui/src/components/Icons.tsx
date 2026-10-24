@@ -209,14 +209,16 @@ export function FileTypeIcon({ path, size = 'var(--size-icon)' }: { path: string
     >
       <rect x="1" y="1" width="14" height="14" rx="2.5" fill="currentColor" />
       <text
-        x="13.6"
-        y="13.4"
+        x="13.9"
+        y="13.6"
         textAnchor="end"
-        fontFamily="var(--font-ui)"
-        fontSize={long ? 5.4 : 7}
-        fontWeight="700"
-        letterSpacing={long ? '-0.04em' : '-0.02em'}
-        fill="var(--color-surface)"
+        style={{
+          fontFamily: 'var(--font-ui)',
+          fontSize: long ? 5.6 : 7.6,
+          fontWeight: 700,
+          letterSpacing: long ? '-0.04em' : '-0.03em',
+          fill: 'var(--color-surface)',
+        }}
       >
         {label}
       </text>
