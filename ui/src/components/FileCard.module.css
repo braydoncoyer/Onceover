@@ -50,7 +50,7 @@
 }
 
 .icon {
-  color: var(--color-text-tertiary);
+  color: var(--color-icon-badge);
   flex-shrink: 0;
 }
 
