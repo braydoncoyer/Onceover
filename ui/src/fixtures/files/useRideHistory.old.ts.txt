@@ -1,0 +1,70 @@
+import { useComputed, useSignal } from '@/lib/signals';
+import { formatRelative } from '@/lib/time';
+import type { Ride, RideId, RideSection } from '@/types/rides';
+import { useRideStore } from '@/stores/rides';
+
+/**
+ * Groups a rider's history into the sections shown on the Ride History
+ * screen. Sections are ordered newest first, and rides that were cancelled
+ * by the driver are dimmed until the rider dismisses them.
+ */
+export function useRideHistory(riderId: string) {
+  const store = useRideStore();
+  const filter = useSignal<'all' | 'completed' | 'cancelled'>('all');
+
+  const rides = useComputed(() =>
+    store.rides.value.filter((ride) => ride.riderId === riderId),
+  );
+
+  const cancelledRideIds = useComputed(() =>
+    rides.value
+      .filter((ride) => ride.status === 'cancelled-by-driver')
+      .map((ride) => ride.id),
+  );
+
+  const ridesInProgress = useComputed(() =>
+    rides.value.filter((ride) => ride.status === 'in-progress'),
+  );
+
+  const emptyMessage = useComputed(() => {
+    switch (filter.value) {
+      case 'completed':
+        return 'No completed rides yet.';
+      case 'cancelled':
+        return 'Nothing was cancelled. Nice.';
+      default:
+        return 'Your rides will show up here.';
+    }
+  });
+
+  // Build sections from ride history state
+
+  const dimmedIds: Set<string> = useComputed(() => {
+    const ids = new Set<string>();
+    for (const id of cancelledRideIds) {
+      ids.add(id);
+    }
+    return ids;
+  });
+
+  const sections = useComputed<RideSection[]>(() => {
+    const byDay = new Map<string, Ride[]>();
+    for (const ride of rides.value) {
+      const day = formatRelative(ride.requestedAt, { granularity: 'day' });
+      const list = byDay.get(day) ?? [];
+      list.push(ride);
+      byDay.set(day, list);
+    }
+    return [...byDay.entries()].map(([title, items]) => ({
+      title,
+      items,
+      dimmed: items.every((ride) => dimmedIds.value.has(ride.id)),
+    }));
+  });
+
+  function dismiss(id: RideId) {
+    store.dismiss(id);
+  }
+
+  return { filter, sections, emptyMessage, dimmedIds, dismiss };
+}

@@ -1,0 +1,9 @@
+/*
+ * Opacity used for ride rows that were cancelled by the driver.
+ * Replaced by the status byline in useRideHistory.
+ */
+export const DIMMED_ROW_OPACITY = 0.48;
+
+export function dimmedStyle(dimmed: boolean) {
+  return { opacity: dimmed ? DIMMED_ROW_OPACITY : 1 };
+}

@@ -1,0 +1,39 @@
+.body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.scroll {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll {
+    scroll-behavior: auto;
+  }
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: var(--size-content-max);
+  margin-inline: auto;
+  padding: var(--space-4) var(--space-6) var(--space-16);
+}
+
+/* Edges fade instead of cutting off. */
+.fade {
+  position: sticky;
+  bottom: 0;
+  height: var(--size-fade);
+  margin-top: calc(var(--size-fade) * -1);
+  pointer-events: none;
+  background: linear-gradient(to bottom, var(--color-scrim), var(--color-scrim-solid));
+}

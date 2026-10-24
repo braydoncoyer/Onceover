@@ -1,0 +1,33 @@
+import type { CSSProperties } from 'react';
+import type { Ride } from '@/types/rides';
+import { Avatar } from '@/ui/lib/avatar';
+import { formatFare } from '@/lib/money';
+import styles from './StatusCard.module.css';
+
+export interface StatusCardProps {
+  ride: Ride;
+  /** Short status shown under the route, like "Driver en route". */
+  byline?: string;
+  style?: CSSProperties;
+  onDismiss?: () => void;
+}
+
+export function StatusCard({ ride, byline, style, onDismiss }: StatusCardProps) {
+  const label = `${ride.pickup.name} to ${ride.dropoff.name}`;
+
+  return (
+    <article className={styles.card} style={style} aria-label={label}>
+      <Avatar src={ride.driver?.photoUrl} name={ride.driver?.name ?? 'Driver'} size={32} />
+      <div className={styles.body}>
+        <p className={styles.route}>{label}</p>
+        {byline ? <p className={styles.byline}>{byline}</p> : null}
+      </div>
+      <span className={styles.fare}>{formatFare(ride.fare)}</span>
+      {onDismiss ? (
+        <button type="button" className={styles.dismiss} onClick={onDismiss}>
+          Dismiss
+        </button>
+      ) : null}
+    </article>
+  );
+}
