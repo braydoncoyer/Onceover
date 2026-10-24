@@ -10,6 +10,24 @@
 :root {
   color-scheme: dark;
 
+  /* ── Ember, Onceover's accent ────────────────────────────────
+   * A warm amber that sits apart from the red and green of a diff and
+   * from Linear's violet. Only the semantic tokens below reference it;
+   * components never do. 400 is the accent itself (7.6:1 on the
+   * surface, and dark text on it reads at 7.9:1); the lighter steps are
+   * text on its tints, 900 is a tint for filled shapes like avatars. */
+  --ember-100: #f6cfa8; /* initials, picked line numbers */
+  --ember-200: #f0b685; /* text on an ember wash, like a comment's line pill */
+  --ember-300: #eea76b; /* hover on an ember control */
+  --ember-400: #e5954f; /* the accent */
+  --ember-400-rgb: 229 149 79; /* the accent, for washes and rings */
+  --ember-900: #3a2a1d; /* filled shapes under ember text */
+
+  /* Warning moves from amber to citrine so "outdated" and "offline" never
+   * read as the accent. */
+  --citrine: #d4bc55;
+  --citrine-rgb: 212 188 85;
+
   /* ── Gray layers ─────────────────────────────────────────────── */
   --color-bg: #0f1011; /* window canvas */
   --color-bg-chrome: #121314; /* header bar */
@@ -24,33 +42,33 @@
   --color-scrim: rgb(15 16 17 / 0%);
   --color-scrim-solid: rgb(15 16 17 / 100%);
   --color-backdrop: rgb(8 9 10 / 56%); /* behind a dialog */
-  --color-flash: rgb(138 144 242 / 10%); /* a change that n or p just jumped to */
-  --color-flash-bar: rgb(138 144 242 / 70%);
-  --color-update-ring: rgb(138 144 242 / 45%); /* a card whose file just changed */
+  --color-flash: rgb(var(--ember-400-rgb) / 10%); /* a change that n or p just jumped to */
+  --color-flash-bar: rgb(var(--ember-400-rgb) / 70%);
+  --color-update-ring: rgb(var(--ember-400-rgb) / 45%); /* a card whose file just changed */
 
   /* ── Comments ────────────────────────────────────────────────── */
   --color-comment-bg: #161719; /* a comment thread's card, a step above the code */
   --color-comment-hairline: #27282b;
   --color-comment-divider: #242528; /* between comments, and above the add row */
   --color-comment-hover: #191a1c; /* the add row under the pointer */
-  --color-composer-ring: rgb(138 144 242 / 40%); /* its border while focused */
-  --color-avatar-bg: #2a2c4a; /* initials on a comment, tinted with the accent */
-  --color-avatar-text: #c3c6f8;
+  --color-composer-ring: rgb(var(--ember-400-rgb) / 40%); /* its border while focused */
+  --color-avatar-bg: var(--ember-900); /* initials on a comment, tinted with the accent */
+  --color-avatar-text: var(--ember-100);
   --color-avatar-muted-bg: #222326;
   --color-avatar-muted-text: #74777e;
-  --color-pill-added-bg: rgb(138 144 242 / 14%); /* a comment on new or kept lines */
-  --color-pill-added-text: #a9adf5;
+  --color-pill-added-bg: rgb(var(--ember-400-rgb) / 14%); /* a comment on new or kept lines */
+  --color-pill-added-text: var(--ember-200);
   --color-pill-removed-bg: rgb(224 116 113 / 14%); /* a comment on removed lines */
   --color-pill-removed-text: #e8807d;
   --color-pill-file-bg: rgb(255 255 255 / 5%); /* a comment on the whole file */
   --color-pill-file-text: var(--color-text-secondary);
   --mix-selected-line: 14%; /* how much accent washes over lines picked for a comment */
-  --color-selected-number: #b6baf6;
+  --color-selected-number: var(--ember-100);
   --color-selected-bar: var(--color-accent);
   --color-gutter-button: var(--color-accent);
-  --color-gutter-button-hover: #a3a8f5;
+  --color-gutter-button-hover: var(--ember-300);
   --color-outdated: var(--color-warning);
-  --color-outdated-soft: rgb(214 166 74 / 12%);
+  --color-outdated-soft: rgb(var(--citrine-rgb) / 12%);
 
   /* ── Text (no pure white) ────────────────────────────────────── */
   --color-text: #d8d9dc;
@@ -61,18 +79,18 @@
   --color-text-on-accent: #0f1011;
 
   /* ── Accent and status ───────────────────────────────────────── */
-  --color-accent: #8a90f2;
-  --color-accent-soft: rgb(138 144 242 / 16%);
-  --color-accent-ring: rgb(138 144 242 / 55%);
+  --color-accent: var(--ember-400);
+  --color-accent-soft: rgb(var(--ember-400-rgb) / 16%);
+  --color-accent-ring: rgb(var(--ember-400-rgb) / 55%);
   --color-added: #5aa457;
   --color-added-strong: #6fbf6b;
   --color-removed: #c95e5b;
   --color-removed-strong: #e07471;
   --color-renamed: #6b9ee8;
-  --color-warning: #d6a64a;
+  --color-warning: var(--citrine);
   --color-live: #5aa457;
   --color-live-halo: rgb(90 164 87 / 18%);
-  --color-warning-halo: rgb(214 166 74 / 18%);
+  --color-warning-halo: rgb(var(--citrine-rgb) / 18%);
 
   /* ── Diff line tints ─────────────────────────────────────────── */
   --color-diff-bg: var(--color-surface);

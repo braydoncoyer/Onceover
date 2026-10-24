@@ -21,6 +21,10 @@ const GROUPS: Array<{ label: string; tokens: string[] }> = [
     tokens: ['color-text-strong', 'color-text', 'color-text-secondary', 'color-text-tertiary', 'color-text-quaternary'],
   },
   {
+    label: 'Ember',
+    tokens: ['ember-100', 'ember-200', 'ember-300', 'ember-400', 'ember-900'],
+  },
+  {
     label: 'Accent and status',
     tokens: ['color-accent', 'color-added', 'color-removed', 'color-renamed', 'color-warning'],
   },
