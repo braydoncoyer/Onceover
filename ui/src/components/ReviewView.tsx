@@ -9,7 +9,7 @@ import type { ReviewFile, ReviewMeta } from '../lib/types';
 import { useCommentState } from '../lib/useCommentState';
 import type { DiffStyle } from '../theme/diffs';
 import { AppHeader, type DoneResult } from './AppHeader';
-import { CommentActionsContext, type Draft } from './Comments';
+import { CommentActionsContext, ReviewerContext, type Draft } from './Comments';
 import { FileCard } from './FileCard';
 import { FileFinder } from './FileFinder';
 import { FileRail } from './FileRail';
@@ -555,6 +555,7 @@ export function ReviewView({
             hint={railHint}
           />
         )}
+        <ReviewerContext.Provider value={meta.reviewer ?? null}>
         <CommentActionsContext.Provider value={review.context}>
         <main ref={scrollRef} className={s.scroll} data-scroll-root>
           <div className={s.stack}>
@@ -607,6 +608,7 @@ export function ReviewView({
           )}
         </main>
         </CommentActionsContext.Provider>
+        </ReviewerContext.Provider>
       </div>
 
       {finderOpen && (

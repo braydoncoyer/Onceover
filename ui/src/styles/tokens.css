@@ -29,10 +29,21 @@
   --color-update-ring: rgb(138 144 242 / 45%); /* a card whose file just changed */
 
   /* ── Comments ────────────────────────────────────────────────── */
-  --color-comment-bg: #18191b; /* a saved comment card, a step above the code */
-  --color-comment-hairline: #26272a;
-  --color-composer-bg: #1a1b1d; /* the box being typed in */
+  --color-comment-bg: #161719; /* a comment thread's card, a step above the code */
+  --color-comment-hairline: #27282b;
+  --color-comment-divider: #242528; /* between comments, and above the add row */
+  --color-comment-hover: #191a1c; /* the add row under the pointer */
   --color-composer-ring: rgb(138 144 242 / 40%); /* its border while focused */
+  --color-avatar-bg: #2a2c4a; /* initials on a comment, tinted with the accent */
+  --color-avatar-text: #c3c6f8;
+  --color-avatar-muted-bg: #222326;
+  --color-avatar-muted-text: #74777e;
+  --color-pill-added-bg: rgb(138 144 242 / 14%); /* a comment on new or kept lines */
+  --color-pill-added-text: #a9adf5;
+  --color-pill-removed-bg: rgb(224 116 113 / 14%); /* a comment on removed lines */
+  --color-pill-removed-text: #e8807d;
+  --color-pill-file-bg: rgb(255 255 255 / 5%); /* a comment on the whole file */
+  --color-pill-file-text: var(--color-text-secondary);
   --mix-selected-line: 14%; /* how much accent washes over lines picked for a comment */
   --color-selected-number: #b6baf6;
   --color-selected-bar: var(--color-accent);
@@ -111,12 +122,14 @@
   --text-sm: 12px;
   --text-md: 13px;
   --text-lg: 14px;
+  --text-comment: 15px; /* a comment's words, a step up from the code so they read as prose */
   --text-xl: 20px;
   --text-code: 13px;
 
   --leading-tight: 16px;
   --leading-ui: 20px;
   --leading-code: 24px;
+  --leading-comment: 23px;
 
   --weight-regular: 400;
   --weight-medium: 500;
@@ -184,7 +197,9 @@
   --size-dot: 6px; /* live status, and a file updated since it was seen */
   --size-dot-halo: 3px;
   --size-comment-max: 720px; /* a comment card's width, so lines stay readable on wide screens */
-  --size-composer-min: 56px; /* the comment box's height before it grows with its text */
+  --size-composer-min: 44px; /* the comment box's height before it grows with its text */
+  --size-avatar: 20px;
+  --size-pill: 20px; /* a comment's status pill */
   --size-composer-max: 320px;
   --size-review-panel: 400px; /* the comments and note popover */
   --size-review-list: 320px;

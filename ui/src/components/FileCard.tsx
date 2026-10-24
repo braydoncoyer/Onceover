@@ -4,7 +4,7 @@ import { hasLineCounts, type ReviewFile } from '../lib/types';
 import { formatByteDelta, formatBytes, modeName, splitPath } from '../lib/path';
 import { useStuck } from '../lib/useStuck';
 import type { DiffStyle } from '../theme/diffs';
-import { CommentedDiff, groupByLine, offViewGroups } from './CommentedDiff';
+import { CommentedDiff, groupAnchor, groupByLine, offViewGroups } from './CommentedDiff';
 import { CommentThread, useCommentActions, type Draft } from './Comments';
 import { FileTypeIcon, IconArrowRight, IconChevronDown, IconComment } from './Icons';
 import { Badge, Button, Counts, ViewedToggle } from './ui';
@@ -136,7 +136,14 @@ export function FileCard({
       <div className={s.bodyWrap} aria-hidden={collapsed}>
         <div className={s.body} inert={collapsed}>
           {(atop.comments.length > 0 || atop.drafts.length > 0) && (
-            <CommentThread comments={atop.comments} drafts={atop.drafts} placement="file" />
+            <CommentThread
+              comments={atop.comments}
+              drafts={atop.drafts}
+              fileId={file.id}
+              // Another comment goes on the whole file, unless all that's here is one spot whose lines aren't drawn.
+              anchor={fileComments.length === 0 && offView.length === 1 ? groupAnchor(offView[0]) : null}
+              placement="file"
+            />
           )}
           <FileBody
             file={file}
