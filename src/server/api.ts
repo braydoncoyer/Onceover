@@ -88,4 +88,17 @@ export interface ApiError {
 /** Sent as `data:` on the event stream. */
 export type ServerEvent =
   /** First event on every connection. A new `server` id means the page should reload its data. */
-  | { type: 'hello'; server: string };
+  | {
+      type: 'hello';
+      server: string;
+      /** False when the server couldn't watch the repo, so edits won't show up on their own. */
+      watching: boolean;
+    }
+  /**
+   * The diff, the branch or the base changed since the last event. Sent once
+   * per burst of edits, only when the result differs, with a fresh diff
+   * already built and waiting at `/api/diff`.
+   */
+  | { type: 'changed'; version: string }
+  /** The watcher stopped working (for example, out of file watches). Edits need a reload to show. */
+  | { type: 'watching'; watching: false; reason: string };

@@ -1,3 +1,4 @@
+import type { LiveStatus } from '../lib/live';
 import type { ReviewMeta } from '../lib/types';
 import type { DiffStyle } from '../theme/diffs';
 import {
@@ -12,6 +13,7 @@ import {
   IconUnified,
 } from './Icons';
 import { BasePicker } from './BasePicker';
+import { LiveIndicator } from './LiveIndicator';
 import { Button, Counts, Kbd, Segmented } from './ui';
 import s from './AppHeader.module.css';
 
@@ -29,6 +31,10 @@ interface AppHeaderProps {
   /** The base picker's menu, opened from here or with B. */
   pickerOpen: boolean;
   onPickerOpenChange: (open: boolean) => void;
+  /** Whether edits show up on their own. Left out in the playground. */
+  live?: LiveStatus;
+  /** Bumped each time a refresh lands, to pulse the live dot. */
+  synced?: number;
 }
 
 /* Linear-style progress glyph: an outer ring with a pie that fills inside it. */
@@ -47,6 +53,8 @@ export function AppHeader({
   onPickBase,
   pickerOpen,
   onPickerOpenChange,
+  live,
+  synced = 0,
 }: AppHeaderProps) {
   const progress = total === 0 ? 0 : viewed / total;
   const baseLabel = (
@@ -93,6 +101,12 @@ export function AppHeader({
       </div>
 
       <div className={s.right}>
+        {live && (
+          <>
+            <LiveIndicator status={live} synced={synced} />
+            <span className={s.divider} />
+          </>
+        )}
         <Segmented<DiffStyle>
           label="Diff layout"
           value={diffStyle}

@@ -1,0 +1,57 @@
+.live {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-inline: var(--space-2);
+  font-size: var(--text-md);
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+  cursor: default;
+  transition: color var(--duration-base) var(--ease-out);
+}
+
+.liveDot {
+  position: relative;
+  width: var(--size-dot);
+  height: var(--size-dot);
+  border-radius: var(--radius-full);
+  background: var(--color-live);
+  box-shadow: 0 0 0 var(--size-dot-halo) var(--color-live-halo);
+  transition:
+    background-color var(--duration-base) var(--ease-out),
+    box-shadow var(--duration-base) var(--ease-out);
+}
+
+.live[data-status='offline'] {
+  color: var(--color-warning);
+}
+.live[data-status='offline'] .liveDot {
+  background: var(--color-warning);
+  box-shadow: 0 0 0 var(--size-dot-halo) var(--color-warning-halo);
+}
+
+.live[data-status='paused'] .liveDot {
+  background: var(--color-text-quaternary);
+  box-shadow: none;
+}
+
+/* One ring out from the dot when an update lands. */
+.ripple {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 0 var(--size-hairline) var(--color-live);
+  opacity: 0;
+  animation: ripple var(--duration-ripple) var(--ease-out);
+}
+
+@keyframes ripple {
+  from {
+    opacity: var(--opacity-soft);
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(var(--scale-ripple));
+  }
+}

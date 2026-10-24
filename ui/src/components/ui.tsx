@@ -78,7 +78,7 @@ export function Badge({
   title,
 }: {
   children: ReactNode;
-  tone?: 'default' | 'added' | 'removed' | 'renamed' | 'muted';
+  tone?: 'default' | 'added' | 'removed' | 'renamed' | 'muted' | 'accent';
   /** Set in the code font, for modes and SHAs. */
   mono?: boolean;
   title?: string;
@@ -89,6 +89,7 @@ export function Badge({
     removed: s.badgeRemoved,
     renamed: s.badgeRenamed,
     muted: s.badgeMuted,
+    accent: s.badgeAccent,
   }[tone];
   return (
     <span className={cx(s.badge, toneClass, mono && s.badgeMono)} title={title}>

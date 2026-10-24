@@ -12,7 +12,7 @@ onceover                                   # in any repo or worktree
 onceover --base dev --port 5000 --no-open
 ```
 
-`onceover` serves the review on `127.0.0.1` and opens your browser. Press Ctrl+C to stop. Each worktree gets the same port every run, so a tab left open picks the new run back up instead of opening another one.
+`onceover` serves the review on `127.0.0.1` and opens your browser. The page follows the repo as the agent works: edits, new files, commits and branch switches show up on their own, and the stack keeps your place. Press Ctrl+C to stop. Each worktree gets the same port every run, so a tab left open picks the new run back up instead of opening another one.
 
 ## Development
 
