@@ -14,7 +14,7 @@ interface StoreFile {
 export class InvalidReviewError extends Error {}
 
 export function emptyReview(): ReviewState {
-  return { viewed: [], comments: [], note: '' };
+  return { viewed: [], viewedVersions: {}, comments: [], note: '' };
 }
 
 /**
@@ -37,7 +37,7 @@ export class ReviewStore {
     const store = await this.read();
     const saved = store.reviews[reviewKey(branch, base)];
     if (!saved) return emptyReview();
-    return { viewed: saved.viewed, comments: saved.comments, note: saved.note };
+    return { viewed: saved.viewed, viewedVersions: saved.viewedVersions ?? {}, comments: saved.comments, note: saved.note };
   }
 
   /** Replaces the review for `branch` against `base`. Throws `InvalidReviewError` on a malformed body. */
@@ -97,9 +97,18 @@ function parseReview(input: unknown): ReviewState {
   if (!Array.isArray(viewed) || !viewed.every((path) => typeof path === 'string')) {
     throw new InvalidReviewError('`viewed` must be a list of paths.');
   }
+  const versions = input.viewedVersions ?? {};
+  if (!isObject(versions) || !Object.values(versions).every((version) => typeof version === 'string')) {
+    throw new InvalidReviewError('`viewedVersions` must map paths to versions.');
+  }
   if (typeof note !== 'string') throw new InvalidReviewError('`note` must be text.');
   if (!Array.isArray(comments)) throw new InvalidReviewError('`comments` must be a list.');
-  return { viewed: [...new Set(viewed)], comments: comments.map(parseComment), note };
+  const paths = [...new Set(viewed as string[])];
+  // Only viewed files keep a version.
+  const viewedVersions = Object.fromEntries(
+    paths.flatMap((path) => (typeof versions[path] === 'string' ? [[path, versions[path] as string]] : [])),
+  );
+  return { viewed: paths, viewedVersions, comments: comments.map(parseComment), note };
 }
 
 function parseComment(input: unknown, index: number): ReviewComment {
