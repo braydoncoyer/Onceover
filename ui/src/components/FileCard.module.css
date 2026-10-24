@@ -50,6 +50,7 @@
 }
 
 .icon {
+  display: inline-flex;
   color: var(--color-icon-badge);
   flex-shrink: 0;
 }
