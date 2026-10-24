@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { FileCard } from '../components/FileCard';
 import { IconCheck, IconSparkle, IconWarning } from '../components/Icons';
 import { SkeletonCard, SkeletonRail } from '../components/SkeletonCard';
+import { LiveIndicator } from '../components/LiveIndicator';
 import { StatePanel } from '../components/StatePanel';
+import { UpdateToast } from '../components/UpdateToast';
 import { Badge, Button, CountBadge, Counts, Kbd, Segmented, ViewedToggle } from '../components/ui';
 import { files, meta, type ReviewFile } from '../fixtures/diff';
 import s from './StatesView.module.css';
@@ -59,6 +61,57 @@ export function StatesView() {
               Tried <code>origin/HEAD</code>, <code>origin/main</code>, <code>origin/master</code>,{' '}
               <code>main</code> and <code>master</code>. Pick the branch this work started from.
             </StatePanel>
+          </div>
+        </section>
+
+        <section className={s.section}>
+          <h2 className={s.label}>Live updates</h2>
+          <div className={s.controls}>
+            <LiveIndicator status="live" />
+            <LiveIndicator status="offline" />
+            <LiveIndicator status="paused" />
+          </div>
+          <div className={s.controls}>
+            <UpdateToast
+              inline
+              delta={{ changed: ['use-ride-history'], added: [], removed: [] }}
+              version={1}
+              files={files}
+              canJump
+              onJump={noop}
+              onDone={noop}
+            />
+            <UpdateToast
+              inline
+              delta={{ changed: ['use-ride-history', 'section-list'], added: ['status-card'], removed: ['dimmed-rows'] }}
+              version={1}
+              files={files}
+              canJump
+              onJump={noop}
+              onDone={noop}
+            />
+            <UpdateToast
+              inline
+              delta={{ changed: [], added: [], removed: ['client/src/legacy/dimmedRows.ts'] }}
+              version={1}
+              files={files}
+              canJump={false}
+              onJump={noop}
+              onDone={noop}
+            />
+          </div>
+          <div className={s.stack}>
+            <FileCard
+              file={byId('status-labels')}
+              diffStyle="unified"
+              viewed={false}
+              collapsed
+              revealed={false}
+              updated
+              onViewedChange={noop}
+              onToggleCollapsed={noop}
+              onReveal={noop}
+            />
           </div>
         </section>
 

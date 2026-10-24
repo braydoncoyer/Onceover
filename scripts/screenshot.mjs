@@ -51,7 +51,7 @@ const logs = [];
 // SHOTS=<regex> takes only the matching screenshots, for quick rounds.
 const only = process.env.SHOTS ? new RegExp(process.env.SHOTS) : null;
 
-async function shoot(name, query, { width = 1440, height = 900, prepare, clip, route, waitUntil = 'networkidle' } = {}) {
+async function shoot(name, query, { width = 1440, height = 900, prepare, clip, route, waitUntil = 'networkidle', then = [], expectOffline = false } = {}) {
   if (only && !only.test(name)) return;
   const page = await browser.newPage({
     viewport: { width, height },
@@ -60,6 +60,8 @@ async function shoot(name, query, { width = 1440, height = 900, prepare, clip, r
     reducedMotion: 'reduce',
   });
   page.on('console', (msg) => {
+    // A page whose server was stopped on purpose keeps trying to reconnect.
+    if (expectOffline && /ERR_CONNECTION_REFUSED/.test(msg.text())) return;
     if (msg.type() === 'error' || msg.type() === 'warning') logs.push(`[${name}] ${msg.type()}: ${msg.text()}`);
   });
   page.on('pageerror', (error) => logs.push(`[${name}] pageerror: ${error.message}`));
@@ -70,6 +72,12 @@ async function shoot(name, query, { width = 1440, height = 900, prepare, clip, r
   if (prepare) await prepare(page);
   const target = clip ? await clip(page) : undefined;
   await page.screenshot({ path: join(outDir, `${name}.png`), clip: target });
+  // More shots of the same page, for states that only exist in that tab.
+  for (const next of then) {
+    await next.prepare(page);
+    await page.screenshot({ path: join(outDir, `${next.name}.png`) });
+    console.log(`✓ ${next.name}`);
+  }
   await page.close();
   console.log(`✓ ${name}`);
 }
@@ -89,7 +97,7 @@ await shoot('02-review-scrolled', 'chrome=0&file=use-ride-history', {
 });
 await shoot('03-review-viewed', 'chrome=0&viewed=ride-history-page,status-labels,dimmed-rows&file=ride-history-page');
 await shoot('04-review-split', 'chrome=0&diff=split&rail=collapsed');
-await shoot('05-states', 'view=states&chrome=0', { height: 1340 });
+await shoot('05-states', 'view=states&chrome=0', { height: 1700 });
 await shoot('06-tokens', 'view=tokens&chrome=0', { height: 1500 });
 await shoot('07-interaction', 'chrome=0', {
   prepare: async (page) => {
@@ -97,6 +105,10 @@ await shoot('07-interaction', 'chrome=0', {
     await page.keyboard.press('Tab');
     await page.waitForTimeout(300);
   },
+});
+// Live status in the header, and two files changed since they were seen.
+await shoot('08-live', 'chrome=0&live=live&updated=use-ride-history,status-labels&file=status-labels', {
+  clip: async () => ({ x: 0, y: 0, width: 1440, height: 520 }),
 });
 // Header, file header and rail rows up close, to judge icon weight.
 await shoot('detail-icons', 'chrome=0&viewed=status-labels', {
@@ -339,6 +351,71 @@ await fetch(new URL('/api/base', reviewUrl), {
   headers: { 'content-type': 'application/json' },
   body: JSON.stringify({ base: null }),
 });
+
+// ── Live refresh ──
+/** The first line of code under the stuck header of a file's card: its text and where it sits. */
+const firstLine = (page, name) =>
+  page.locator('[data-scroll-root]').evaluate((root, name) => {
+    const card = root.querySelector(`section[aria-label$="${name}"]`);
+    const rootTop = root.getBoundingClientRect().top;
+    const y = rootTop + 44;
+    const row = [...card.querySelector('diffs-container').shadowRoot.querySelectorAll('[data-line][data-line-type]')]
+      .map((node) => ({ text: node.textContent, top: node.getBoundingClientRect().top - rootTop }))
+      .find((item) => item.top + rootTop >= y);
+    return { ...row, scrollTop: root.scrollTop };
+  }, name);
+const sectionList = 'app/src/ui/lib/list/section-list.tsx';
+const sectionListBefore = readFileSync(join(reviewRepo, sectionList), 'utf8');
+// V folds the first file. Then, reading halfway down a later file, the agent
+// edits the folded file above and adds a new one: the folded file unfolds and
+// loses its viewed mark, and the line being read stays put.
+await shoot('app-16-live-edit', reviewUrl, {
+  prepare: async (page) => {
+    await page.keyboard.press('v');
+    await page.waitForTimeout(400);
+    await page.locator('[data-scroll-root]').evaluate((root) => {
+      const card = root.querySelector('section[aria-label$="RideHistoryPage.tsx"]');
+      root.scrollTo({ top: root.scrollTop + card.getBoundingClientRect().top - root.getBoundingClientRect().top + 120, behavior: 'instant' });
+    });
+    await page.waitForTimeout(400);
+    const before = await firstLine(page, 'RideHistoryPage.tsx');
+    const lines = sectionListBefore.split('\n');
+    lines.splice(15, 0, '  /** Called once the list has measured its rows */', '  readonly onRowsMeasured?: (count: number) => void', '');
+    writeFileSync(join(reviewRepo, sectionList), lines.join('\n'));
+    write(reviewRepo, { 'client/src/views/RideHistory/rideTime.ts': 'export const formatRideTime = (date: Date) =>\n  date.toLocaleTimeString([], { hour: \'numeric\', minute: \'2-digit\' });\n' });
+    await page.waitForTimeout(1600);
+    const after = await firstLine(page, 'RideHistoryPage.tsx');
+    logs.push(
+      `[app-16-live-edit] info: reading "${before.text?.trim()}" at ${before.top.toFixed(1)} px, after the edit "${after.text?.trim()}" at ${after.top.toFixed(1)} px (scrollTop ${before.scrollTop} → ${after.scrollTop})`,
+    );
+  },
+  // U jumps to the next updated file: the edited one, unfolded, with its badge.
+  then: [
+    {
+      name: 'app-17-next-updated',
+      prepare: async (page) => {
+        await page.keyboard.press('u');
+        await page.waitForTimeout(800);
+      },
+    },
+  ],
+});
+writeFileSync(join(reviewRepo, sectionList), sectionListBefore);
+rmSync(join(reviewRepo, 'client/src/views/RideHistory/rideTime.ts'), { force: true });
+// The server stops: the header says so, and the page waits for it to come back.
+{
+  const server = await startServer({ repo: await findRepo(reviewRepo), uiDir: root });
+  await shoot('app-18-offline', server.url, {
+    expectOffline: true,
+    prepare: async (page) => {
+      await server.close();
+      await page.waitForTimeout(2500);
+    },
+    clip: async () => ({ x: 720, y: 0, width: 720, height: 120 }),
+  });
+  await server.close();
+}
+
 const edgeUrl = await serveRepo(edgeRepo);
 await shoot('app-08-edge-cases', edgeUrl, { height: 1800 });
 // The folded deleted file, opened up.
