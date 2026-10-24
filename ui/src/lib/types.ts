@@ -40,6 +40,8 @@ export interface ReviewMeta {
   /** The base detection picks, offered in the picker to go back to. */
   defaultBase?: string | null;
   mergeBase: string;
+  /** Who's reviewing, from git's `user.name`, for the name on their comments. */
+  reviewer?: string | null;
 }
 
 /** Line counts mean nothing for binaries and submodules, and +0 -0 is noise. */
