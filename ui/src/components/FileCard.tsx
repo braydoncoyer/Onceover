@@ -1,5 +1,5 @@
 import { FileDiff } from '@pierre/diffs/react';
-import type { ReviewFile } from '../fixtures/diff';
+import type { ReviewFile } from '../lib/types';
 import { formatBytes, splitPath } from '../lib/path';
 import { useStuck } from '../lib/useStuck';
 import { diffHostStyle, diffOptions, type DiffStyle } from '../theme/diffs';
