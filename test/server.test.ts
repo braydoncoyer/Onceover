@@ -189,6 +189,14 @@ describe('server API', () => {
     assert.equal(meta.mergeBase, repo.git('rev-parse', 'origin/main'));
     assert.equal(meta.worktree, repo.dir);
     assert.equal(meta.isLinkedWorktree, false);
+    assert.equal(meta.reviewer, 'Test');
+  });
+
+  it("names the reviewer from the repo's own git config first", async () => {
+    const repo = featureRepo();
+    repo.git('config', 'user.name', 'Ada Lovelace');
+    const meta = (await request(await serve(repo), '/api/meta')).json<MetaResponse>();
+    assert.equal(meta.reviewer, 'Ada Lovelace');
   });
 
   it('sends every changed file with old and new contents', async () => {

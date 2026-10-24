@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState
 import { scrollBehavior } from '../lib/changes';
 import { lineLabel, type LineAnchor, type ReviewComment } from '../lib/comments';
 import { MOD_LABEL, isMac } from '../lib/keys';
+import { fullTime, initials, relativeTime, useNow } from '../lib/time';
 import { IconPencil, IconTrash } from './Icons';
 import { Button, Kbd } from './ui';
 import s from './Comments.module.css';
@@ -52,27 +53,48 @@ export interface ThreadItems {
   drafts: Draft[];
 }
 
+/** Who's writing the review, for the name and avatar on their comments. Null when git doesn't know. */
+export const ReviewerContext = createContext<string | null>(null);
+
+const useReviewer = () => useContext(ReviewerContext) ?? 'You';
+
 /**
- * The comments under a line (or atop a file): saved cards in the order they
- * were written, then any box still open. A comment being edited turns into a
- * box in its own place.
+ * The comments under a line (or atop a file), as one card: saved comments in
+ * the order they were written, then a row to add another, or the box being
+ * written in. A comment being edited turns into a box in its own place.
  */
-export function CommentThread({ comments, drafts, placement = 'line' }: ThreadItems & { placement?: 'line' | 'file' }) {
+export function CommentThread({
+  comments,
+  drafts,
+  fileId,
+  anchor,
+  placement = 'line',
+}: ThreadItems & {
+  /** The file the thread is on, for its add-another row. */
+  fileId: string;
+  /** Where another comment on this thread goes: these lines, or the whole file when null. */
+  anchor: LineAnchor | null;
+  placement?: 'line' | 'file';
+}) {
+  const { startDraft } = useCommentActions();
   const editing = new Map(drafts.filter((draft) => draft.editing).map((draft) => [draft.editing, draft]));
   const fresh = drafts.filter((draft) => !draft.editing);
   return (
     <div className={`${s.thread} ${placement === 'file' ? s.fileThread : ''}`} data-comment-thread>
-      {comments.map((comment) => {
-        const draft = editing.get(comment.id);
-        return draft ? (
-          <CommentComposer key={comment.id} draft={draft} label={labelFor(comment, placement)} />
-        ) : (
-          <CommentCard key={comment.id} comment={comment} placement={placement} />
-        );
-      })}
-      {fresh.map((draft) => (
-        <CommentComposer key={draft.id} draft={draft} label={labelFor(draft.anchor, placement)} />
-      ))}
+      <div className={s.card}>
+        {comments.map((comment) => {
+          const draft = editing.get(comment.id);
+          return draft ? (
+            <CommentComposer key={comment.id} draft={draft} label={labelFor(comment, placement)} tone={toneFor(comment)} />
+          ) : (
+            <CommentItem key={comment.id} comment={comment} placement={placement} />
+          );
+        })}
+        {fresh.map((draft) => (
+          <CommentComposer key={draft.id} draft={draft} label={labelFor(draft.anchor, placement)} tone={toneFor(draft.anchor)} />
+        ))}
+        {comments.length > 0 && fresh.length === 0 && <AddRow onClick={() => startDraft(fileId, anchor)} />}
+      </div>
     </div>
   );
 }
@@ -84,17 +106,51 @@ function labelFor(target: Pick<ReviewComment, 'side' | 'start' | 'end'> | LineAn
   return placement === 'file' ? `${label}, not in view` : label;
 }
 
-export function CommentCard({ comment, placement = 'line' }: { comment: ReviewComment; placement?: 'line' | 'file' }) {
-  const { editComment, deleteComment } = useCommentActions();
+type Tone = 'added' | 'removed' | 'file' | 'outdated';
+
+/** A comment's pill takes the color of what it points at: kept or new lines, removed lines, or the whole file. */
+function toneFor(target: Pick<ReviewComment, 'side' | 'start'> | LineAnchor | null): Tone {
+  if (!target || target.start === null) return 'file';
+  return target.side === 'old' ? 'removed' : 'added';
+}
+
+/** A small round mark with the reviewer's initials. */
+function Avatar({ name, muted = false }: { name: string; muted?: boolean }) {
   return (
-    <article className={`${s.card} ${comment.outdated ? s.outdated : ''}`} data-comment-id={comment.id}>
+    <span className={`${s.avatar} ${muted ? s.avatarMuted : ''}`} aria-hidden="true">
+      {initials(name)}
+    </span>
+  );
+}
+
+function Pill({ tone, children, title }: { tone: Tone; children: string; title?: string }) {
+  return (
+    <span className={s.pill} data-tone={tone} title={title}>
+      {children}
+    </span>
+  );
+}
+
+function CommentItem({ comment, placement }: { comment: ReviewComment; placement: 'line' | 'file' }) {
+  const { editComment, deleteComment } = useCommentActions();
+  const reviewer = useReviewer();
+  const now = useNow();
+  const edited = comment.updatedAt !== comment.createdAt;
+  return (
+    <article className={`${s.comment} ${comment.outdated ? s.outdated : ''}`} data-comment-id={comment.id}>
       <header className={s.meta}>
-        <span className={s.label}>{labelFor(comment, placement)}</span>
-        {comment.outdated && (
-          <span className={s.outdatedBadge} title="The code this pointed at has changed or is gone">
+        <Avatar name={reviewer} />
+        <span className={s.author}>{reviewer}</span>
+        <time className={s.time} dateTime={comment.createdAt} title={fullTime(edited ? comment.updatedAt : comment.createdAt)}>
+          {relativeTime(comment.createdAt, now)}
+          {edited ? ' · edited' : ''}
+        </time>
+        {comment.outdated ? (
+          <Pill tone="outdated" title="The code this pointed at has changed or is gone">
             Outdated
-          </span>
-        )}
+          </Pill>
+        ) : null}
+        <Pill tone={comment.outdated ? 'file' : toneFor(comment)}>{labelFor(comment, placement)}</Pill>
         <span className={s.actions}>
           <Button variant="ghost" size="sm" iconOnly title="Edit comment" aria-label="Edit comment" onClick={() => editComment(comment.id)}>
             <IconPencil size="var(--size-icon-xs)" />
@@ -124,9 +180,21 @@ export function CommentCard({ comment, placement = 'line' }: { comment: ReviewCo
   );
 }
 
+/** The row under a thread's comments that opens a box for another one. */
+function AddRow({ onClick }: { onClick: () => void }) {
+  const reviewer = useReviewer();
+  return (
+    <button type="button" className={s.addRow} onClick={onClick}>
+      <Avatar name={reviewer} muted />
+      <span className={s.addLabel}>Add another comment</span>
+    </button>
+  );
+}
+
 /** A box to write a comment in. Grows with its text; ⌘↵ saves, Esc cancels. */
-export function CommentComposer({ draft, label }: { draft: Draft; label: string }) {
+export function CommentComposer({ draft, label, tone }: { draft: Draft; label: string; tone: Tone }) {
   const { changeDraft, cancelDraft, saveDraft, focus } = useCommentActions();
+  const reviewer = useReviewer();
   const fieldRef = useRef<HTMLTextAreaElement>(null);
   // Tracked here, not with :focus-within, which Chromium can miss on a box
   // Pierre has slotted into its diff.
@@ -178,18 +246,21 @@ export function CommentComposer({ draft, label }: { draft: Draft; label: string 
         if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false);
       }}
     >
-      <textarea
-        ref={fieldRef}
-        className={s.field}
-        value={draft.body}
-        rows={2}
-        placeholder={draft.editing ? 'Edit your comment' : `Leave a comment for Claude`}
-        aria-label={`Comment on ${label.toLowerCase()}`}
-        onChange={(event) => changeDraft(draft.id, event.target.value)}
-        onKeyDown={onKeyDown}
-      />
+      <div className={s.compose}>
+        <Avatar name={reviewer} />
+        <textarea
+          ref={fieldRef}
+          className={s.field}
+          value={draft.body}
+          rows={1}
+          placeholder={draft.editing ? 'Edit your comment' : 'Leave a comment for Claude'}
+          aria-label={`Comment on ${label.toLowerCase()}`}
+          onChange={(event) => changeDraft(draft.id, event.target.value)}
+          onKeyDown={onKeyDown}
+        />
+      </div>
       <footer className={s.footer}>
-        <span className={s.target}>{label}</span>
+        <Pill tone={tone}>{label}</Pill>
         <span className={s.buttons}>
           <Button variant="ghost" size="sm" onClick={() => cancelDraft(draft.id)} title="Cancel (Esc)">
             Cancel

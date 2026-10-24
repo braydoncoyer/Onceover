@@ -20,6 +20,7 @@ export const meta: ReviewMeta = {
   base: 'origin/main',
   defaultBase: 'origin/main',
   mergeBase: '3f9a2c1',
+  reviewer: 'Sam Rivera',
 };
 
 function countLines(diff: FileDiffMetadata) {

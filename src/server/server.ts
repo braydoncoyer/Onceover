@@ -30,6 +30,7 @@ import { InvalidReviewError, ReviewStore } from './review-store.ts';
 import { SettingsStore } from './settings-store.ts';
 import { serveStatic } from './static.ts';
 import { watchRepo, type RepoWatcher } from './watch.ts';
+import { gitTry } from '../git/exec.ts';
 
 const HOST = '127.0.0.1';
 const MAX_BODY = 5 * 1024 * 1024;
@@ -138,6 +139,11 @@ export async function startServer(options: ServerOptions): Promise<OnceoverServe
     return { repo, base, mergeBase };
   };
 
+  // Read once: who the review is from doesn't change while the server runs.
+  const reviewer = gitTry(['config', 'user.name'], { cwd: root })
+    .then((name) => name || null)
+    .catch(() => null);
+
   const meta = async (): Promise<MetaResponse> => {
     const { repo, base, mergeBase } = await current();
     const detected = await detectBase(repo).catch(() => null);
@@ -151,6 +157,7 @@ export async function startServer(options: ServerOptions): Promise<OnceoverServe
       mergeBase,
       worktree: repo.root,
       isLinkedWorktree: repo.isLinkedWorktree,
+      reviewer: await reviewer,
     };
   };
 

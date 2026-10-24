@@ -68,7 +68,23 @@ export function offViewGroups(file: ReviewFile, groups: LineGroup[], hidden: Set
   });
 }
 
+/** Where another comment on a group's thread goes: the lines of its newest comment. */
+export function groupAnchor(group: LineGroup): LineAnchor | null {
+  const last = group.comments.at(-1);
+  if (last && isLineComment(last)) return { side: last.side, start: last.start, end: last.end };
+  return group.drafts.find((draft) => draft.anchor)?.anchor ?? null;
+}
+
 const slotName = (group: Pick<LineGroup, 'side' | 'line'>) => `annotation-${group.side}-${group.line}`;
+
+/** Pierre's annotations for a space-separated list of group keys (`side:line`). */
+export function annotationsAt(places: string): DiffLineAnnotation<string>[] {
+  if (!places) return [];
+  return places.split(' ').map((key) => {
+    const [side, line] = key.split(':');
+    return { side: side as LineGroup['side'], lineNumber: Number(line), metadata: key };
+  });
+}
 
 interface CommentedDiffProps {
   file: ReviewFile & { diff: NonNullable<ReviewFile['diff']> };
@@ -128,10 +144,12 @@ export function CommentedDiff({ file, diffStyle, groups, hidden, onHiddenChange,
     dragging ??
     (open && { start: open.start, end: open.end, side: toSelectionSide(open.side), endSide: toSelectionSide(open.side) });
 
-  const annotations = useMemo<DiffLineAnnotation<string>[]>(
-    () => groups.map((group) => ({ side: group.side, lineNumber: group.line, metadata: group.key })),
-    [groups],
-  );
+  // Pierre throws away and redraws every line of the file whenever it's handed
+  // a new list of annotations. Typing in a box changes the groups on each
+  // keystroke but not where they sit, so the list is rebuilt only when a spot
+  // is added or removed. The boxes themselves still update, as React children.
+  const places = groups.map((group) => group.key).join(' ');
+  const annotations = useMemo<DiffLineAnnotation<string>[]>(() => annotationsAt(places), [places]);
   const byKey = new Map(groups.map((group) => [group.key, group]));
 
   // Pierre only draws a place for comments on lines it shows. Check which
@@ -176,7 +194,7 @@ export function CommentedDiff({ file, diffStyle, groups, hidden, onHiddenChange,
           const group = annotation.metadata ? byKey.get(annotation.metadata) : undefined;
           // A group shown atop the file isn't drawn here too.
           if (!group || hidden?.has(group.key)) return null;
-          return <CommentThread comments={group.comments} drafts={group.drafts} />;
+          return <CommentThread comments={group.comments} drafts={group.drafts} fileId={file.id} anchor={groupAnchor(group)} />;
         }}
         disableWorkerPool
       />
