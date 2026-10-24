@@ -1,2 +1,3 @@
+[app-10-big-branch] info: 120 cards, scroll frame median 16.7 ms, worst 40.0 ms
 [app-04-no-base] error: Failed to load resource: the server responded with a status of 409 (Conflict)
 [app-04-no-base] error: Failed to load resource: the server responded with a status of 409 (Conflict)

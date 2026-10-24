@@ -12,10 +12,20 @@ import {
   findRepo,
   getChangedFiles,
   listBranches,
+  type BaseInfo,
   type RepoInfo,
 } from '../git/index.ts';
-import type { ApiError, BranchesResponse, DiffResponse, MetaResponse, ReviewResponse, ServerEvent } from './api.ts';
+import type {
+  ApiError,
+  BaseRequest,
+  BranchesResponse,
+  DiffResponse,
+  MetaResponse,
+  ReviewResponse,
+  ServerEvent,
+} from './api.ts';
 import { InvalidReviewError, ReviewStore } from './review-store.ts';
+import { SettingsStore } from './settings-store.ts';
 import { serveStatic } from './static.ts';
 
 const HOST = '127.0.0.1';
@@ -28,7 +38,10 @@ const gzipAsync = promisify(gzip);
 
 export interface ServerOptions {
   repo: RepoInfo;
-  /** The `--base` flag, used exactly as given. Detected on every request when left out. */
+  /**
+   * The `--base` flag, used exactly as given. When left out, the base saved
+   * from the page's base picker is used, else it's detected on every request.
+   */
   base?: string;
   /** Folder holding the built UI. */
   uiDir: string;
@@ -47,6 +60,8 @@ export interface OnceoverServer {
    * reconnects on its own, so the CLI can skip opening a new one.
    */
   waitForPage(ms: number): Promise<boolean>;
+  /** The base the page will diff against, or null when none can be found. */
+  currentBase(): Promise<string | null>;
   /** Pushes an event to every open page. */
   broadcast(event: ServerEvent): void;
   close(): Promise<void>;
@@ -70,18 +85,63 @@ export class PortInUseError extends Error {
 export async function startServer(options: ServerOptions): Promise<OnceoverServer> {
   const root = options.repo.root;
   const store = new ReviewStore(options.repo.gitDir);
+  const settings = new SettingsStore(options.repo.gitDir);
+  /** The base picked in the page this run. Wins over the flag; null goes back to detection. */
+  let picked: string | null | undefined;
   const id = randomUUID();
   const pages = new EventEmitter();
   const streams = new Set<ServerResponse>();
   const staticFiles = serveStatic(options.uiDir);
   let port = 0;
 
+  /**
+   * The base to diff against: picked in the page this run, else `--base`,
+   * else the one saved from an earlier pick, else detected. A picked or saved
+   * base that has since been deleted falls back to detection.
+   */
+  const resolveBase = async (repo: RepoInfo): Promise<BaseInfo> => {
+    const [choice, source] =
+      picked !== undefined
+        ? [picked, 'picked' as const]
+        : options.base
+          ? [options.base, 'option' as const]
+          : [(await settings.get()).base, 'saved' as const];
+    if (!choice) return detectBase(repo);
+    try {
+      return { ...(await detectBase(repo, choice)), source };
+    } catch (error) {
+      if (!(error instanceof BaseNotFoundError) || source === 'option') throw error;
+      try {
+        return await detectBase(repo);
+      } catch (fallback) {
+        if (fallback instanceof BaseNotFoundError) throw new BaseNotFoundError([choice, ...fallback.tried]);
+        throw fallback;
+      }
+    }
+  };
+
   /** HEAD and the branch can move while the server runs, so they're read fresh. */
   const current = async () => {
     const repo = await findRepo(root);
-    const base = await detectBase(repo, options.base);
+    const base = await resolveBase(repo);
     const mergeBase = await findMergeBase(repo, base);
     return { repo, base, mergeBase };
+  };
+
+  const meta = async (): Promise<MetaResponse> => {
+    const { repo, base, mergeBase } = await current();
+    const detected = await detectBase(repo).catch(() => null);
+    return {
+      repo: repo.name,
+      branch: repo.branch,
+      shortHead: repo.shortHead,
+      head: repo.head,
+      base,
+      defaultBase: detected?.ref ?? null,
+      mergeBase,
+      worktree: repo.root,
+      isLinkedWorktree: repo.isLinkedWorktree,
+    };
   };
 
   // Requests that land while a diff is being built share it.
@@ -98,18 +158,29 @@ export async function startServer(options: ServerOptions): Promise<OnceoverServe
 
   const routes: Record<string, (req: IncomingMessage, res: ServerResponse, url: URL) => Promise<void>> = {
     'GET /api/meta': async (req, res) => {
-      const { repo, base, mergeBase } = await current();
-      const meta: MetaResponse = {
-        repo: repo.name,
-        branch: repo.branch,
-        shortHead: repo.shortHead,
-        head: repo.head,
-        base,
-        mergeBase,
-        worktree: repo.root,
-        isLinkedWorktree: repo.isLinkedWorktree,
-      };
-      await sendJson(req, res, 200, meta);
+      await sendJson(req, res, 200, await meta());
+    },
+
+    // Switches the base for this run and remembers it for the next one.
+    // Writes only to <git-dir>/onceover/settings.json.
+    'PUT /api/base': async (req, res) => {
+      if (!/^application\/json\b/i.test(req.headers['content-type'] ?? '')) {
+        return sendError(req, res, 415, 'bad-request', 'Send the base as application/json.');
+      }
+      const body = (await readJson(req)) as Partial<BaseRequest> | null;
+      const base = body && typeof body === 'object' && !Array.isArray(body) ? body.base : undefined;
+      if (base !== null && (typeof base !== 'string' || !base.trim())) {
+        return sendError(req, res, 400, 'bad-request', 'Send `base` as a branch name, or null to detect it.');
+      }
+      const ref = base?.trim() ?? null;
+      if (ref !== null) {
+        // Check it before switching, so a bad pick leaves the current base alone.
+        const repo = await findRepo(root);
+        await findMergeBase(repo, await detectBase(repo, ref));
+      }
+      picked = ref;
+      await settings.update({ base: ref });
+      await sendJson(req, res, 200, await meta());
     },
 
     'GET /api/diff': async (req, res) => {
@@ -161,7 +232,7 @@ export async function startServer(options: ServerOptions): Promise<OnceoverServe
   /** Reviews are keyed by branch (or HEAD's SHA when detached) and base. */
   const reviewKeyParts = async () => {
     const repo = await findRepo(root);
-    const base = await detectBase(repo, options.base);
+    const base = await resolveBase(repo);
     return { branch: repo.branch ?? repo.head, base: base.ref };
   };
 
@@ -212,6 +283,13 @@ export async function startServer(options: ServerOptions): Promise<OnceoverServe
         const timer = setTimeout(() => done(false), ms);
         pages.on('page', onPage);
       });
+    },
+    async currentBase() {
+      try {
+        return (await resolveBase(await findRepo(root))).ref;
+      } catch {
+        return null;
+      }
     },
     broadcast(event) {
       for (const res of streams) writeEvent(res, event);
@@ -286,7 +364,7 @@ async function readJson(req: IncomingMessage): Promise<unknown> {
   let size = 0;
   for await (const chunk of req as AsyncIterable<Buffer>) {
     size += chunk.length;
-    if (size > MAX_BODY) throw new InvalidReviewError('The review is too large to save.');
+    if (size > MAX_BODY) throw new InvalidReviewError('The request is too large.');
     chunks.push(chunk);
   }
   try {

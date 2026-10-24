@@ -40,10 +40,19 @@ const server = createServer((req, res) => {
 await new Promise((done) => server.listen(0, '127.0.0.1', done));
 const base = `http://127.0.0.1:${server.address().port}/`;
 
-const browser = await chromium.launch();
+// CHROMIUM_PATH and CHROMIUM_ARGS (JSON) point at another Chromium build, for
+// machines where `npx playwright install` can't download one.
+const browser = await chromium.launch({
+  executablePath: process.env.CHROMIUM_PATH || undefined,
+  args: process.env.CHROMIUM_ARGS ? JSON.parse(process.env.CHROMIUM_ARGS) : undefined,
+});
 const logs = [];
 
+// SHOTS=<regex> takes only the matching screenshots, for quick rounds.
+const only = process.env.SHOTS ? new RegExp(process.env.SHOTS) : null;
+
 async function shoot(name, query, { width = 1440, height = 900, prepare, clip, route, waitUntil = 'networkidle' } = {}) {
+  if (only && !only.test(name)) return;
   const page = await browser.newPage({
     viewport: { width, height },
     deviceScaleFactor: 2,
@@ -174,6 +183,60 @@ write(reviewRepo, {
   'client/public/img/route-map@2x.png': png(2),
 });
 
+// Other branches for the base picker.
+git(reviewRepo, 'branch', 'release/2.4', 'main');
+// Starts from this branch's commit, so switching to it leaves only the uncommitted work.
+git(reviewRepo, 'branch', 'agent/map-view', 'HEAD');
+
+// Every kind of file card: mode change, renames, empty, symlink, binary,
+// a submodule, a very large file and a deleted one shown in full.
+const edgeRepo = makeRepo('edge');
+const bigLines = (n, word) => Array.from({ length: n }, (_, i) => `export const ${word}${i} = ${i};`).join('\n') + '\n';
+{
+  const origin = join(sandbox, 'edge-origin');
+  write(origin, {
+    'scripts/release.sh': '#!/bin/sh\nnpm run build\n',
+    'client/src/views/RideHistory/rideFormat.ts': fixture('rideStatus.old.ts.txt'),
+    'client/src/legacy/statusColors.ts': 'export const DIMMED = 0.4;\nexport const FULL = 1;\n',
+    'docs/README.md': '# Ride history\n',
+    'client/src/test/fixtures/rides.ts': bigLines(1200, 'ride'),
+  });
+  git(origin, 'add', '--all');
+  git(origin, 'commit', '--quiet', '-m', 'More files');
+  const vendorA = git(origin, 'commit-tree', '-m', 'vendor a', git(origin, 'write-tree'));
+  git(origin, 'update-index', '--add', '--cacheinfo', `160000,${vendorA},vendor/maps-sdk`);
+  git(origin, 'commit', '--quiet', '-m', 'Add maps SDK');
+  git(edgeRepo, 'fetch', '--quiet');
+  git(edgeRepo, 'reset', '--quiet', '--hard', 'origin/main');
+  const vendorB = git(edgeRepo, 'commit-tree', '-m', 'vendor b', git(edgeRepo, 'write-tree'));
+  git(edgeRepo, 'update-index', '--cacheinfo', `160000,${vendorB},vendor/maps-sdk`);
+  execFileSync('chmod', ['+x', join(edgeRepo, 'scripts/release.sh')]);
+  mkdirSync(join(edgeRepo, 'client/src/format'));
+  mkdirSync(join(edgeRepo, 'client/src/theme'));
+  git(edgeRepo, 'mv', 'client/src/views/RideHistory/rideFormat.ts', 'client/src/format/rideFormat.ts');
+  git(edgeRepo, 'mv', 'client/src/legacy/statusColors.ts', 'client/src/theme/statusColors.ts');
+  write(edgeRepo, {
+    'client/src/format/rideFormat.ts': fixture('statusLabels.new.ts.txt'),
+    'client/src/views/RideHistory/index.ts': '',
+    'client/src/test/fixtures/rides.ts': bigLines(1400, 'trip'),
+    'client/public/img/pin@2x.png': png(3),
+  });
+  rmSync(join(edgeRepo, 'docs/README.md'));
+  execFileSync('ln', ['-s', '../client/src/views/RideHistory/README.md', join(edgeRepo, 'docs/README.md')]);
+  git(edgeRepo, 'add', '--all');
+  git(edgeRepo, 'commit', '--quiet', '-m', 'Edge cases');
+  git(edgeRepo, 'rm', '--quiet', 'client/src/legacy/dimmedRows.ts');
+}
+
+// A big branch: 120 files, to check scrolling stays smooth.
+const bigRepo = makeRepo('big');
+for (let i = 0; i < 120; i++) {
+  const dir = ['client/src/views', 'client/src/components', 'server/src/routes', 'packages/ui/src'][i % 4];
+  write(bigRepo, {
+    [`${dir}/module${String(i).padStart(3, '0')}.ts`]: `${bigLines(30 + (i % 7) * 10, `value${i}_`)}`,
+  });
+}
+
 // No changes yet.
 const emptyRepo = makeRepo('empty');
 
@@ -184,6 +247,7 @@ git(orphanRepo, 'init', '--quiet', '--initial-branch=agent/experiment');
 write(orphanRepo, { 'README.md': '# rideshare-web\n' });
 git(orphanRepo, 'add', '--all');
 git(orphanRepo, 'commit', '--quiet', '-m', 'Start');
+git(orphanRepo, 'branch', 'develop');
 
 const appServers = [];
 async function serveRepo(dir) {
@@ -198,6 +262,57 @@ await shoot('app-02-review-scrolled', reviewUrl, {
   prepare: async (page) => {
     await page.locator('[data-scroll-root]').evaluate((node) => node.scrollBy(0, 1400));
     await page.waitForTimeout(400);
+  },
+});
+await shoot('app-06-base-picker', reviewUrl, {
+  prepare: async (page) => {
+    await page.getByRole('button', { name: /origin\/main/ }).click();
+    await page.waitForTimeout(500);
+  },
+  clip: async () => ({ x: 0, y: 0, width: 960, height: 480 }),
+});
+await shoot('app-07-base-switched', reviewUrl, {
+  prepare: async (page) => {
+    await page.getByRole('button', { name: /origin\/main/ }).click();
+    await page.getByRole('option', { name: /agent\/map-view/ }).click();
+    await page.waitForTimeout(1200);
+  },
+});
+// Put the base back for the shots after this one.
+await fetch(new URL('/api/base', reviewUrl), {
+  method: 'PUT',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ base: null }),
+});
+const edgeUrl = await serveRepo(edgeRepo);
+await shoot('app-08-edge-cases', edgeUrl, { height: 1800 });
+// The folded deleted file, opened up.
+await shoot('app-09-edge-cases-revealed', edgeUrl, {
+  prepare: async (page) => {
+    await page.getByRole('button', { name: 'Show lines' }).click();
+    await page.locator('section[aria-label$="dimmedRows.ts"]').evaluate((node) => node.scrollIntoView({ block: 'start' }));
+    await page.mouse.move(8, 892);
+    await page.waitForTimeout(400);
+  },
+});
+const bigUrl = await serveRepo(bigRepo);
+await shoot('app-10-big-branch', bigUrl, {
+  prepare: async (page) => {
+    const timing = await page.evaluate(async () => {
+      const root = document.querySelector('[data-scroll-root]');
+      const frames = [];
+      let last = performance.now();
+      for (let i = 0; i < 60; i++) {
+        root.scrollBy(0, 400);
+        await new Promise((done) => requestAnimationFrame(done));
+        const now = performance.now();
+        frames.push(now - last);
+        last = now;
+      }
+      frames.sort((a, b) => a - b);
+      return { median: frames[30], worst: frames[59], cards: document.querySelectorAll('section[id^="file-"]').length };
+    });
+    logs.push(`[app-10-big-branch] info: ${timing.cards} cards, scroll frame median ${timing.median.toFixed(1)} ms, worst ${timing.worst.toFixed(1)} ms`);
   },
 });
 await shoot('app-03-empty', await serveRepo(emptyRepo));

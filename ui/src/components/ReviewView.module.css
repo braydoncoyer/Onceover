@@ -37,3 +37,9 @@
   pointer-events: none;
   background: linear-gradient(to bottom, var(--color-scrim), var(--color-scrim-solid));
 }
+
+.railSkeleton {
+  width: var(--size-rail);
+  flex-shrink: 0;
+  border-right: var(--size-hairline) solid var(--color-hairline-soft);
+}

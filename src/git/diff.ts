@@ -105,10 +105,11 @@ async function readChangedFiles(repo: RepoInfo, mergeBase: string): Promise<Chan
 
     const entries = parseRaw(raw.stdout);
     const counts = parseNumstat(numstat.stdout);
-    const patches = splitPatch(patch.stdout.toString('utf8'));
-    if (counts.length !== entries.length || patches.length !== entries.length) {
+    const chunks = splitPatch(patch.stdout.toString('utf8'));
+    const patches = alignPatches(entries, chunks);
+    if (counts.length !== entries.length || patches === null) {
       throw new OutOfSyncError(
-        `git diff output didn't line up: ${entries.length} files, ${counts.length} counts, ${patches.length} patches`,
+        `git diff output didn't line up: ${entries.length} files, ${counts.length} counts, ${chunks.length} patches`,
       );
     }
 
@@ -287,6 +288,33 @@ export function splitPatch(patch: string): string[] {
   if (!patch) return [];
   const parts = patch.split(/\n(?=diff --git )/);
   return parts.map((part, i) => (i < parts.length - 1 ? `${part}\n` : part));
+}
+
+/**
+ * Matches patches to raw entries. Git prints a type change (a file turned
+ * into a symlink, say) as a deletion and a creation under the same
+ * `diff --git` header, so those two chunks join into one patch. Null when
+ * the counts still don't line up.
+ */
+export function alignPatches(entries: Array<{ status: ChangeStatus }>, chunks: string[]): string[] | null {
+  const patches: string[] = [];
+  let at = 0;
+  for (const entry of entries) {
+    if (at >= chunks.length) return null;
+    const next = chunks[at + 1];
+    if (entry.status === 'type-changed' && next !== undefined && firstLine(next) === firstLine(chunks[at])) {
+      patches.push(chunks[at] + next);
+      at += 2;
+    } else {
+      patches.push(chunks[at++]);
+    }
+  }
+  return at === chunks.length ? patches : null;
+}
+
+function firstLine(text: string): string {
+  const end = text.indexOf('\n');
+  return end === -1 ? text : text.slice(0, end);
 }
 
 const GENERATED_NAMES = new Set([

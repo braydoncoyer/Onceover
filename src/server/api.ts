@@ -10,6 +10,8 @@ export interface MetaResponse {
   shortHead: string;
   head: string;
   base: BaseInfo;
+  /** The base detection would pick, offered in the base picker to go back to. Null when none is found. */
+  defaultBase: string | null;
   mergeBase: string;
   /** This worktree's folder. */
   worktree: string;
@@ -28,6 +30,11 @@ export interface BranchesResponse {
   local: string[];
   /** Short names like `origin/main`, without symbolic refs like `origin/HEAD`. */
   remote: string[];
+}
+
+/** Body of `PUT /api/base`. A null base goes back to the detected one. */
+export interface BaseRequest {
+  base: string | null;
 }
 
 export interface ReviewComment {
