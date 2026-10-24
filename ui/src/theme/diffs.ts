@@ -216,6 +216,16 @@ const unsafeCSS = /* css */ `
   [data-column-number][data-line-type=change-deletion] {
     color: var(--color-diff-line-number-removed);
   }
+  /* Unified view: removed lines show a minus in place of the old line number, as in the mockup. */
+  pre:not([data-diff-type=split]) [data-column-number][data-line-type=change-deletion] [data-line-number-content] {
+    color: transparent;
+  }
+  pre:not([data-diff-type=split]) [data-column-number][data-line-type=change-deletion] [data-line-number-content]::after {
+    content: '\\2212';
+    position: absolute;
+    inset-inline-end: 0;
+    color: var(--color-diff-line-number-removed);
+  }
   [data-indicators=bars] [data-line-type=change-addition][data-column-number]::before,
   [data-indicators=bars] [data-line-type=change-deletion][data-column-number]::before {
     width: var(--size-bar);
@@ -260,22 +270,6 @@ const unsafeCSS = /* css */ `
     border-color: var(--color-diff-bg);
   }
 
-  /* Up and down expanders sit side by side instead of stacked in half-rows. */
-  [data-separator=line-info] [data-separator-wrapper][data-separator-multi-button] {
-    grid-template-rows: 100%;
-    grid-template-columns: var(--size-control) var(--size-control) auto;
-  }
-  [data-separator=line-info] [data-separator-multi-button] [data-separator-content] {
-    grid-area: auto;
-  }
-  [data-separator=line-info] [data-separator-multi-button] [data-expand-up] {
-    border: 0;
-    border-right: var(--size-hairline) solid var(--color-diff-bg);
-    border-radius: var(--radius-md) 0 0 var(--radius-md);
-  }
-  [data-separator=line-info] [data-separator-multi-button] [data-expand-down] {
-    border-radius: 0;
-  }
   [data-expand-button]:hover,
   [data-expand-index] [data-separator-content]:hover {
     color: var(--color-text);
@@ -305,7 +299,8 @@ export function diffOptions(diffStyle: DiffStyle): FileDiffOptions<undefined, un
     disableFileHeader: true,
     overflow: 'scroll',
     collapsedContextThreshold: 3,
-    expansionLineCount: 10,
+    // Folds up to this size open in one click; bigger ones open in steps.
+    expansionLineCount: 20,
     unsafeCSS,
   };
 }
