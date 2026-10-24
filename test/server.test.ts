@@ -321,6 +321,7 @@ describe('review storage', () => {
       branch: 'feature',
       base: 'origin/main',
       viewed: [],
+      viewedVersions: {},
       comments: [],
       note: '',
     });
@@ -334,14 +335,22 @@ describe('review storage', () => {
       text: ['export const a = 2;'],
       body: 'Why 2?',
     };
-    const saved = await putReview(first, { viewed: ['new.ts', 'new.ts'], comments: [comment], note: 'Close.' });
+    const saved = await putReview(first, {
+      viewed: ['new.ts', 'new.ts'],
+      // A version for a file that isn't viewed is dropped.
+      viewedVersions: { 'new.ts': 'v1', 'committed.ts': 'v9' },
+      comments: [comment],
+      note: 'Close.',
+    });
     assert.equal(saved.status, 200);
     assert.deepEqual(saved.json<ReviewResponse>().viewed, ['new.ts']);
+    assert.deepEqual(saved.json<ReviewResponse>().viewedVersions, { 'new.ts': 'v1' });
     await first.close();
 
     const second = await serve(repo);
     const review = (await request(second, '/api/review')).json<ReviewResponse>();
     assert.deepEqual(review.viewed, ['new.ts']);
+    assert.deepEqual(review.viewedVersions, { 'new.ts': 'v1' });
     assert.equal(review.note, 'Close.');
     assert.equal(review.comments.length, 1);
     assert.equal(review.comments[0].body, 'Why 2?');
@@ -365,6 +374,7 @@ describe('review storage', () => {
 
     const bad = [
       { viewed: 'new.ts' },
+      { viewed: ['new.ts'], viewedVersions: { 'new.ts': 3 } },
       { comments: [{ id: 'c1', body: 1 }] },
       { comments: [{ id: 'c1', body: 'x', start: 4, end: 2 }] },
       { comments: [{ id: 'c1', body: 'x', side: 'left' }] },
