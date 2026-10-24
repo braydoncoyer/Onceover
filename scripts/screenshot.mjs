@@ -1,15 +1,21 @@
-// Screenshots the built design playground (dist/ui) with Playwright.
+// Screenshots the built design playground (dist/ui/playground.html) and the
+// real app, served by the Onceover server over a throwaway repo made from the
+// playground's fixture files. Uses Playwright.
 // Usage: npm run build && npm run screenshot [-- outDir]
-import { createReadStream, existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { createReadStream, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
-import { extname, join, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
+import { dirname, extname, join, resolve } from 'node:path';
 import { chromium } from 'playwright';
+import { findRepo } from '../src/git/index.ts';
+import { startServer } from '../src/server/server.ts';
 
 const root = resolve('dist/ui');
 const outDir = resolve(process.argv[2] ?? 'docs/screenshots');
 mkdirSync(outDir, { recursive: true });
 
-if (!existsSync(join(root, 'index.html'))) {
+if (!existsSync(join(root, 'playground.html'))) {
   console.error('dist/ui is missing. Run `npm run build` first.');
   process.exit(1);
 }
@@ -37,7 +43,7 @@ const base = `http://127.0.0.1:${server.address().port}/`;
 const browser = await chromium.launch();
 const logs = [];
 
-async function shoot(name, query, { width = 1440, height = 900, prepare, clip } = {}) {
+async function shoot(name, query, { width = 1440, height = 900, prepare, clip, route, waitUntil = 'networkidle' } = {}) {
   const page = await browser.newPage({
     viewport: { width, height },
     deviceScaleFactor: 2,
@@ -48,7 +54,8 @@ async function shoot(name, query, { width = 1440, height = 900, prepare, clip } 
     if (msg.type() === 'error' || msg.type() === 'warning') logs.push(`[${name}] ${msg.type()}: ${msg.text()}`);
   });
   page.on('pageerror', (error) => logs.push(`[${name}] pageerror: ${error.message}`));
-  await page.goto(`${base}?${query}`, { waitUntil: 'networkidle' });
+  if (route) await route(page);
+  await page.goto(query.startsWith('http') ? query : `${base}playground.html?${query}`, { waitUntil });
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(1200);
   if (prepare) await prepare(page);
@@ -101,6 +108,107 @@ await shoot('detail-changes', 'chrome=0&file=section-list', {
     return { x: rail.x, y: Math.max(box.y - 60, 0), width: 1440, height: 760 };
   },
 });
+
+// ── The real app ─────────────────────────────────────────────────────────
+
+const sandbox = mkdtempSync(join(tmpdir(), 'onceover-shots-'));
+const fixtures = resolve('ui/src/fixtures/files');
+const fixture = (name) => readFileSync(join(fixtures, name));
+const gitEnv = {
+  ...process.env,
+  GIT_CONFIG_GLOBAL: join(sandbox, 'gitconfig'),
+  GIT_CONFIG_NOSYSTEM: '1',
+  GIT_AUTHOR_DATE: '2026-10-20T10:00:00Z',
+  GIT_COMMITTER_DATE: '2026-10-20T10:00:00Z',
+};
+writeFileSync(gitEnv.GIT_CONFIG_GLOBAL, '[user]\n\tname = Onceover\n\temail = shots@example.com\n[init]\n\tdefaultBranch = main\n');
+const git = (cwd, ...args) => execFileSync('git', args, { cwd, env: gitEnv, stdio: 'pipe' }).toString().trim();
+const write = (dir, files) => {
+  for (const [path, contents] of Object.entries(files)) {
+    mkdirSync(dirname(join(dir, path)), { recursive: true });
+    writeFileSync(join(dir, path), contents);
+  }
+};
+const lockfile = (version) =>
+  `${JSON.stringify({ name: 'rideshare-web', lockfileVersion: 3, packages: { '': { version } } }, null, 2)}\n`;
+const png = (seed) => Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0]), Buffer.alloc(4096 + seed * 512, seed)]);
+
+/** `origin` on main with the old files, cloned into `rideshare-web` and branched. */
+function makeRepo(name) {
+  const origin = join(sandbox, `${name}-origin`);
+  mkdirSync(origin);
+  git(origin, 'init', '--quiet');
+  write(origin, {
+    'client/src/views/RideHistory/useRideHistory.ts': fixture('useRideHistory.old.ts.txt'),
+    'client/src/views/RideHistory/RideHistoryPage.tsx': fixture('RideHistoryPage.old.tsx.txt'),
+    'app/src/ui/lib/list/section-list.tsx': fixture('section-list.old.tsx.txt'),
+    'client/src/views/RideHistory/rideStatus.ts': fixture('rideStatus.old.ts.txt'),
+    'client/src/legacy/dimmedRows.ts': fixture('dimmedRows.old.ts.txt'),
+    'client/public/img/route-map@2x.png': png(1),
+    'package-lock.json': lockfile('1.4.0'),
+  });
+  git(origin, 'add', '--all');
+  git(origin, 'commit', '--quiet', '-m', 'Initial commit');
+  const repo = join(sandbox, name, 'rideshare-web');
+  mkdirSync(dirname(repo), { recursive: true });
+  git(sandbox, 'clone', '--quiet', origin, repo);
+  git(repo, 'switch', '--quiet', '-c', 'feature/dimmed-status-cards');
+  return repo;
+}
+
+// Committed, uncommitted and new changes, like the playground fixture.
+const reviewRepo = makeRepo('review');
+write(reviewRepo, {
+  'client/src/views/RideHistory/useRideHistory.ts': fixture('useRideHistory.new.ts.txt'),
+  'app/src/ui/lib/list/section-list.tsx': fixture('section-list.new.tsx.txt'),
+  'package-lock.json': lockfile('1.5.0'),
+});
+git(reviewRepo, 'mv', 'client/src/views/RideHistory/rideStatus.ts', 'client/src/views/RideHistory/statusLabels.ts');
+write(reviewRepo, { 'client/src/views/RideHistory/statusLabels.ts': fixture('statusLabels.new.ts.txt') });
+git(reviewRepo, 'rm', '--quiet', 'client/src/legacy/dimmedRows.ts');
+git(reviewRepo, 'add', '--all');
+git(reviewRepo, 'commit', '--quiet', '-m', 'Dim finished rides');
+write(reviewRepo, {
+  'client/src/views/RideHistory/RideHistoryPage.tsx': fixture('RideHistoryPage.new.tsx.txt'),
+  'client/src/components/StatusCard/StatusCard.tsx': fixture('StatusCard.new.tsx.txt'),
+  'client/public/img/route-map@2x.png': png(2),
+});
+
+// No changes yet.
+const emptyRepo = makeRepo('empty');
+
+// No base to find.
+const orphanRepo = join(sandbox, 'orphan', 'rideshare-web');
+mkdirSync(orphanRepo, { recursive: true });
+git(orphanRepo, 'init', '--quiet', '--initial-branch=agent/experiment');
+write(orphanRepo, { 'README.md': '# rideshare-web\n' });
+git(orphanRepo, 'add', '--all');
+git(orphanRepo, 'commit', '--quiet', '-m', 'Start');
+
+const appServers = [];
+async function serveRepo(dir) {
+  const server = await startServer({ repo: await findRepo(dir), uiDir: root });
+  appServers.push(server);
+  return server.url;
+}
+
+const reviewUrl = await serveRepo(reviewRepo);
+await shoot('app-01-review', reviewUrl);
+await shoot('app-02-review-scrolled', reviewUrl, {
+  prepare: async (page) => {
+    await page.locator('[data-scroll-root]').evaluate((node) => node.scrollBy(0, 1400));
+    await page.waitForTimeout(400);
+  },
+});
+await shoot('app-03-empty', await serveRepo(emptyRepo));
+await shoot('app-04-no-base', await serveRepo(orphanRepo));
+await shoot('app-05-loading', reviewUrl, {
+  route: (page) => page.route('**/api/diff', () => new Promise(() => {})),
+  waitUntil: 'domcontentloaded',
+});
+
+await Promise.all(appServers.map((server) => server.close()));
+rmSync(sandbox, { recursive: true, force: true });
 
 writeFileSync(join(outDir, 'console.txt'), logs.length ? `${logs.join('\n')}\n` : 'No console errors or warnings.\n');
 await browser.close();
