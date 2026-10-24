@@ -4,6 +4,10 @@ Give your agent's work a once-over. A minimal, beautiful local diff viewer: run 
 
 Status: in development. See `docs/SPEC.md`.
 
+## Try the demo
+
+[Open the live demo](https://onceover-demo.vercel.app) to try Onceover without installing anything. It's the real app on a made-up branch of a rideshare app, with one of every kind of change: renames, deletions, a binary image, a lockfile, a mode change, a submodule and a file too big to show at once. Leave comments, mark files viewed, switch the base, press Done reviewing, and use the demo bar to play an agent's edits and watch the page keep up. Everything stays in your browser.
+
 ## Running it
 
 ```
@@ -20,3 +24,4 @@ onceover --base dev --port 5000 --no-open
 - The design playground lives at `playground.html` (`npm run dev`, then open `/playground.html`).
 - `npm test` runs the git core, server and CLI tests against throwaway repos (Node 22.18 or later).
 - `npm run typecheck` checks both the UI and the Node code.
+- `npm run demo` serves the demo locally, and `npm run build:demo` builds it into `dist/demo`. Its data comes from `scripts/demo-data.ts`, which runs the real git core over a throwaway repo; the page answers the API from that data in the browser (`ui/src/demo`).

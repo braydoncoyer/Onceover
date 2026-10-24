@@ -56,14 +56,24 @@ function computeLineDiffDecorations(args) {
   };
 }
 
-export default defineConfig({
+/** `--mode demo`: the static demo (ui/demo.html), the real app over a fake server. */
+const demoBuild = {
+  outDir: '../dist/demo',
+  emptyOutDir: true,
+  chunkSizeWarningLimit: 4096,
+  rolldownOptions: { input: resolve(import.meta.dirname, 'ui/demo.html') },
+};
+
+export default defineConfig(({ mode }) => ({
   root: 'ui',
   base: './',
+  // The hosted demo serves the data `scripts/demo-data.ts` writes next to its page.
+  publicDir: mode === 'demo' ? '../.demo/public' : 'public',
   plugins: [pierreWordPills(), react()],
   optimizeDeps: {
     rolldownOptions: { plugins: [pierreWordPills()] },
   },
-  build: {
+  build: mode === 'demo' ? demoBuild : {
     outDir: singleFile ? '../dist/preview' : '../dist/ui',
     emptyOutDir: true,
     assetsInlineLimit: singleFile ? Number.MAX_SAFE_INTEGER : undefined,
@@ -89,4 +99,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));

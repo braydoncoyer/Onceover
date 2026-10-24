@@ -567,10 +567,74 @@ await shoot('app-05-loading', reviewUrl, {
   waitUntil: 'domcontentloaded',
 });
 
+// ── The hosted demo ─────────────────────────────────────────────────────
+// The real app over the demo's fake server (npm run build:demo), when it's built.
+const demoRoot = resolve('dist/demo');
+let demoServer = null;
+if (existsSync(join(demoRoot, 'index.html'))) {
+  demoServer = createServer((req, res) => {
+    const path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+    let file = join(demoRoot, path);
+    if (!file.startsWith(demoRoot) || !existsSync(file) || statSync(file).isDirectory()) file = join(demoRoot, 'index.html');
+    res.writeHead(200, { 'content-type': TYPES[extname(file)] ?? (file.endsWith('.json') ? 'application/json' : 'application/octet-stream') });
+    createReadStream(file).pipe(res);
+  });
+  await new Promise((done) => demoServer.listen(0, '127.0.0.1', done));
+  const demoUrl = `http://127.0.0.1:${demoServer.address().port}/`;
+  /** Scrolls the stack so a file's card sits under the header. */
+  const scrollTo = (name, offset = 0) => async (page) => {
+    await page.locator('[data-scroll-root]').evaluate(
+      (root, [name, offset]) => {
+        const card = root.querySelector(`section[aria-label$="${name}"]`);
+        root.scrollTo({ top: root.scrollTop + card.getBoundingClientRect().top - root.getBoundingClientRect().top + offset, behavior: 'instant' });
+      },
+      [name, offset],
+    );
+    await page.waitForTimeout(400);
+  };
+  // First visit: seeded comments, a viewed file and the demo bar.
+  await shoot('demo-01-open', demoUrl, {
+    then: [
+      { name: 'demo-02-comments', prepare: scrollTo('useRideHistory.ts', 520) },
+      {
+        name: 'demo-03-live-edit',
+        prepare: async (page) => {
+          await page.getByRole('button', { name: /Simulate an agent edit/ }).click();
+          await page.waitForTimeout(1600);
+        },
+      },
+      {
+        name: 'demo-04-done',
+        prepare: async (page) => {
+          await page.keyboard.press('ControlOrMeta+Shift+Enter');
+          await page.waitForTimeout(800);
+        },
+      },
+    ],
+  });
+  await shoot('demo-05-edge-cases', demoUrl, { height: 2000, prepare: scrollTo('package-lock.json', -1200) });
+  await shoot('demo-06-base-picker', demoUrl, {
+    prepare: async (page) => {
+      await page.getByRole('button', { name: /origin\/main/ }).click();
+      await page.waitForTimeout(400);
+    },
+    then: [
+      {
+        name: 'demo-07-base-switched',
+        prepare: async (page) => {
+          await page.getByRole('option', { name: /origin\/release\/2\.4/ }).click();
+          await page.waitForTimeout(1200);
+        },
+      },
+    ],
+  });
+}
+
 await Promise.all(appServers.map((server) => server.close()));
 rmSync(sandbox, { recursive: true, force: true });
 
 writeFileSync(join(outDir, 'console.txt'), logs.length ? `${logs.join('\n')}\n` : 'No console errors or warnings.\n');
 await browser.close();
 server.close();
+demoServer?.close();
 console.log(logs.length ? `${logs.length} console messages, see console.txt` : 'No console errors.');
