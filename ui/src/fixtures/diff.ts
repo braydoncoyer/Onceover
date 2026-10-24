@@ -18,6 +18,7 @@ export const meta: ReviewMeta = {
   repo: 'rideshare-web',
   branch: 'feature/dimmed-status-cards',
   base: 'origin/main',
+  defaultBase: 'origin/main',
   mergeBase: '3f9a2c1',
 };
 
@@ -61,6 +62,7 @@ export const files: ReviewFile[] = [
     path: 'client/src/views/RideHistory/RideHistoryPage.tsx',
     status: 'modified',
     origin: 'uncommitted',
+    uncommitted: true,
     comments: 0,
     oldContents: rideHistoryPageOld,
     newContents: rideHistoryPageNew,
@@ -70,6 +72,7 @@ export const files: ReviewFile[] = [
     path: 'client/src/components/StatusCard/StatusCard.tsx',
     status: 'added',
     origin: 'new',
+    uncommitted: true,
     comments: 0,
     oldContents: null,
     newContents: statusCardNew,
@@ -107,6 +110,7 @@ export const files: ReviewFile[] = [
     path: 'client/public/img/route-map@2x.png',
     status: 'binary',
     origin: 'uncommitted',
+    uncommitted: true,
     additions: 0,
     deletions: 0,
     comments: 0,

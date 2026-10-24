@@ -1,4 +1,5 @@
-import type { ReviewFile } from '../lib/types';
+import { useEffect, useRef } from 'react';
+import { hasLineCounts, type ReviewFile } from '../lib/types';
 import { shortenMiddle } from '../lib/path';
 import { IconCheck, IconChevronDown, IconComment, IconStatus } from './Icons';
 import { CountBadge, Counts, Kbd } from './ui';
@@ -22,9 +23,28 @@ interface FileRailProps {
   collapsed: boolean;
   onToggleCollapsed: () => void;
   onSelect: (id: string) => void;
+  /** Show the keyboard hint at the bottom. */
+  hint?: boolean;
 }
 
-export function FileRail({ files, currentId, viewed, collapsed, onToggleCollapsed, onSelect }: FileRailProps) {
+export function FileRail({
+  files,
+  currentId,
+  viewed,
+  collapsed,
+  onToggleCollapsed,
+  onSelect,
+  hint = true,
+}: FileRailProps) {
+  const listRef = useRef<HTMLUListElement>(null);
+
+  // Keep the current file's row in sight as the stack scrolls.
+  useEffect(() => {
+    listRef.current
+      ?.querySelector<HTMLElement>('[aria-current="true"]')
+      ?.scrollIntoView({ block: 'nearest' });
+  }, [currentId]);
+
   return (
     <nav className={`${s.rail} ${collapsed ? s.collapsed : ''}`} aria-label="Changed files">
       <button
@@ -39,11 +59,16 @@ export function FileRail({ files, currentId, viewed, collapsed, onToggleCollapse
         <IconChevronDown className={s.headChevron} size="var(--size-icon-sm)" />
       </button>
 
-      <ul className={s.list}>
+      <ul ref={listRef} className={s.list}>
         {files.map((file) => {
           const { dir, name } = shortenMiddle(file.path, PATH_BUDGET);
           const isViewed = viewed.has(file.id);
-          const classes = [s.row, isViewed && s.isViewed, file.status === 'deleted' && s.isDeleted]
+          const classes = [
+            s.row,
+            isViewed && s.isViewed,
+            file.status === 'deleted' && s.isDeleted,
+            file.status === 'generated' && s.isGenerated,
+          ]
             .filter(Boolean)
             .join(' ');
           return (
@@ -53,7 +78,7 @@ export function FileRail({ files, currentId, viewed, collapsed, onToggleCollapse
                 className={classes}
                 aria-current={file.id === currentId}
                 onClick={() => onSelect(file.id)}
-                title={file.path}
+                title={file.prevPath ? `${file.prevPath} → ${file.path}` : file.path}
               >
                 <span className={s.path}>
                   <span className={s.dir}>{dir}</span>
@@ -66,7 +91,7 @@ export function FileRail({ files, currentId, viewed, collapsed, onToggleCollapse
                       {file.comments}
                     </span>
                   )}
-                  {file.status !== 'binary' && (
+                  {hasLineCounts(file) && (
                     <span className={s.counts}>
                       <Counts small additions={file.additions} deletions={file.deletions} />
                     </span>
@@ -88,11 +113,13 @@ export function FileRail({ files, currentId, viewed, collapsed, onToggleCollapse
         })}
       </ul>
 
-      <div className={s.footer}>
-        <Kbd>J</Kbd>
-        <Kbd>K</Kbd>
-        <span>to move between files</span>
-      </div>
+      {hint && (
+        <div className={s.footer}>
+          <Kbd>J</Kbd>
+          <Kbd>K</Kbd>
+          <span>to move between files</span>
+        </div>
+      )}
     </nav>
   );
 }
