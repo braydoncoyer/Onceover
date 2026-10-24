@@ -11,6 +11,7 @@ export const SHORTCUT_GROUPS: Array<{ title: string; items: Array<{ keys: string
     items: [
       { keys: ['J', 'K'], label: 'Next and previous file' },
       { keys: ['N', 'P'], label: 'Next and previous change' },
+      { keys: ['U'], label: 'Next updated file' },
       { keys: [MOD_LABEL, 'K'], label: 'Jump to a file' },
     ],
   },

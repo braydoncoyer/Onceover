@@ -18,6 +18,7 @@ import {
   type MetaResponse,
   type ReviewState,
 } from '../lib/api';
+import { reuseUnchanged, type LiveStatus } from '../lib/live';
 import type { ReviewFile, ReviewMeta } from '../lib/types';
 import s from './App.module.css';
 
@@ -31,13 +32,23 @@ type State =
       /** Files still viewed: marked, and unchanged since. */
       viewed: string[];
       switching: boolean;
+      /** Branch and base the review is for. A change in either starts a new review. */
+      key: string;
     }
   | { kind: 'error'; error: ApiRequestError | Error };
+
+/** Longest the page waits on a dropped stream before it says it's offline, in ms. */
+const OFFLINE_GRACE_MS = 1500;
 
 /** The real review screen: the server's diff in the playground's components. */
 export function App() {
   const [state, setState] = useState<State>({ kind: 'loading' });
+  const stateRef = useRef(state);
+  stateRef.current = state;
   const [worktree, setWorktree] = useState<string | null>(null);
+  const [live, setLive] = useState<LiveStatus>('live');
+  /** Bumped each time a refresh lands, so the live dot can pulse. */
+  const [synced, setSynced] = useState(0);
   const loadRef = useRef<AbortController | null>(null);
   /** The saved review, so saving viewed marks keeps its comments and note. */
   const reviewRef = useRef<ReviewState | null>(null);
@@ -68,6 +79,7 @@ export function App() {
         files,
         viewed: stillViewed(files, review),
         switching: false,
+        key: reviewKey(meta),
       });
       document.title = `${titleOf(meta)} · Onceover`;
     } catch (error) {
@@ -81,16 +93,88 @@ export function App() {
     return () => loadRef.current?.abort();
   }, [load]);
 
-  // A new server (a restart, or a fresh run reusing this tab) means fresh data.
-  useEffect(() => {
-    if (!worktree) return;
-    let server: string | null = null;
-    return listen(worktree, (event) => {
-      if (event.type !== 'hello') return;
-      if (server !== null && server !== event.server) void load();
-      server = event.server;
+  /**
+   * Brings the open review up to date without starting over: new files slot
+   * in, changed ones are swapped, and the stack keeps its place. A new branch
+   * or base is a different review, so that loads from scratch. Refreshes run
+   * one at a time; one asked for meanwhile runs right after.
+   */
+  const refreshing = useRef<Promise<void> | null>(null);
+  const refreshAgain = useRef(false);
+  const refresh = useCallback((): Promise<void> => {
+    if (refreshing.current) {
+      refreshAgain.current = true;
+      return refreshing.current;
+    }
+    const run = async () => {
+      do {
+        refreshAgain.current = false;
+        const current = stateRef.current;
+        if (current.kind !== 'ready' || current.switching) {
+          await load();
+          continue;
+        }
+        try {
+          const [meta, diff] = await Promise.all([getMeta(), getDiff()]);
+          if (reviewKey(meta) !== current.key) {
+            await load();
+            continue;
+          }
+          setState((prev) => {
+            if (prev.kind !== 'ready') return prev;
+            const files = reuseUnchanged(prev.files, orderFiles(diff.files.map(toReviewFile)));
+            return { ...prev, meta: toReviewMeta(meta), files };
+          });
+          document.title = `${titleOf(meta)} · Onceover`;
+          setSynced((count) => count + 1);
+        } catch (error) {
+          // Lost the server: the stream notices too, and refreshes when it's back.
+          if (error instanceof ApiRequestError && error.code === 'network') return;
+          await load();
+        }
+      } while (refreshAgain.current);
+    };
+    refreshing.current = run().finally(() => {
+      refreshing.current = null;
     });
-  }, [worktree, load]);
+    return refreshing.current;
+  }, [load]);
+
+  // Edits land as `changed` events. A new server (a restart, or a fresh run
+  // reusing this tab) may have missed some, so it refreshes too.
+  useEffect(() => {
+    let server: string | null = null;
+    let offline: number | undefined;
+    const stop = listen(
+      worktree,
+      (event) => {
+        if (event.type === 'hello') {
+          setLive(event.watching ? 'live' : 'paused');
+          // An error page (say, the server was down at first load) tries again too.
+          if ((server !== null && server !== event.server) || stateRef.current.kind === 'error') void refresh();
+          server = event.server;
+        } else if (event.type === 'changed') {
+          void refresh();
+        } else if (event.type === 'watching') {
+          setLive('paused');
+        }
+      },
+      (open) => {
+        if (open) {
+          window.clearTimeout(offline);
+          offline = undefined;
+          return;
+        }
+        // A blip while the browser reconnects isn't worth a warning. Failed
+        // retries keep the first timer running rather than starting over.
+        offline ??= window.setTimeout(() => setLive('offline'), OFFLINE_GRACE_MS);
+      },
+    );
+    return () => {
+      window.clearTimeout(offline);
+      stop();
+    };
+  }, [worktree, refresh]);
 
   /** Saves the base, then shows skeletons in the stack while the new diff loads. Rejects if the server refuses it. */
   const pickBase = useCallback(
@@ -132,11 +216,13 @@ export function App() {
   return (
     <div className={s.page}>
       <ReviewView
-        key={`${state.worktree}\u0000${state.meta.base}`}
+        key={`${state.worktree}\u0000${state.key}`}
         meta={state.meta}
         files={state.files}
         initialViewed={state.viewed}
         loading={state.switching}
+        live={live}
+        synced={synced}
         onPickBase={pickBase}
         onViewedChange={saveViewed}
         empty={
@@ -168,6 +254,10 @@ function stillViewed(files: ReviewFile[], review: ReviewState | null): string[] 
  */
 function orderFiles(files: ReviewFile[]): ReviewFile[] {
   return [...files.filter((file) => file.status !== 'generated'), ...files.filter((file) => file.status === 'generated')];
+}
+
+function reviewKey(meta: MetaResponse): string {
+  return `${meta.branch ?? meta.head}\u0000${meta.base.ref}`;
 }
 
 function titleOf(meta: MetaResponse): string {

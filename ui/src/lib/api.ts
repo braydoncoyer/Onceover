@@ -12,7 +12,7 @@ import type {
 } from '../../../src/server/api.ts';
 import type { ReviewFile, ReviewMeta } from './types';
 
-export type { BranchesResponse, DiffResponse, MetaResponse, ReviewResponse, ReviewState } from '../../../src/server/api.ts';
+export type { BranchesResponse, DiffResponse, MetaResponse, ReviewResponse, ReviewState, ServerEvent } from '../../../src/server/api.ts';
 
 /** Past this many changed lines a file waits behind a Load diff button. */
 const LARGE_FILE_LINES = 2000;
@@ -165,17 +165,24 @@ function buildDiff(file: ChangedFile): FileDiffMetadata | null {
 }
 
 /**
- * Listens to the server's event stream. Calls `onServer` with the server's id
- * on every (re)connection, so the page can reload after a restart. Keeps
- * trying if the browser gives up on the stream.
+ * Listens to the server's event stream. `onEvent` gets every event, including
+ * a `hello` with the server's id on every (re)connection, so the page can
+ * reload after a restart. `onConnection` hears when the stream opens and when
+ * it drops. Keeps trying if the browser gives up on the stream.
  */
-export function listen(worktree: string, onEvent: (event: ServerEvent) => void): () => void {
+export function listen(
+  worktree: string | null,
+  onEvent: (event: ServerEvent) => void,
+  onConnection?: (open: boolean) => void,
+): () => void {
   let source: EventSource | null = null;
   let retry: number | undefined;
   let stopped = false;
 
   const connect = () => {
-    source = new EventSource(`/api/events?worktree=${encodeURIComponent(worktree)}`);
+    const query = worktree ? `?worktree=${encodeURIComponent(worktree)}` : '';
+    source = new EventSource(`/api/events${query}`);
+    source.onopen = () => onConnection?.(true);
     source.onmessage = (message) => {
       try {
         onEvent(JSON.parse(message.data as string) as ServerEvent);
@@ -184,8 +191,10 @@ export function listen(worktree: string, onEvent: (event: ServerEvent) => void):
       }
     };
     source.onerror = () => {
+      if (stopped) return;
+      onConnection?.(false);
       // The browser retries on its own unless it closed the stream for good.
-      if (source?.readyState !== EventSource.CLOSED || stopped) return;
+      if (source?.readyState !== EventSource.CLOSED) return;
       source = null;
       retry = window.setTimeout(connect, 2000);
     };

@@ -20,6 +20,8 @@ interface FileRailProps {
   files: ReviewFile[];
   currentId: string;
   viewed: Set<string>;
+  /** Files changed since they were last seen, marked with a dot. */
+  updated?: Set<string>;
   collapsed: boolean;
   onToggleCollapsed: () => void;
   onSelect: (id: string) => void;
@@ -32,6 +34,7 @@ export function FileRail({
   files,
   currentId,
   viewed,
+  updated,
   collapsed,
   onToggleCollapsed,
   onSelect,
@@ -70,6 +73,7 @@ export function FileRail({
             isViewed && s.isViewed,
             file.status === 'deleted' && s.isDeleted,
             file.status === 'generated' && s.isGenerated,
+            updated?.has(file.id) && s.isUpdated,
           ]
             .filter(Boolean)
             .join(' ');
@@ -85,6 +89,7 @@ export function FileRail({
                 <span className={s.path}>
                   <span className={s.dir}>{dir}</span>
                   <span className={s.name}>{name}</span>
+                  {updated?.has(file.id) && <span className={s.updated} aria-label="Updated" title="Changed since you last saw it" />}
                 </span>
                 <span className={s.meta}>
                   {file.comments > 0 && (

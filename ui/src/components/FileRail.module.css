@@ -239,3 +239,38 @@
 .collapsed .footer {
   display: none;
 }
+
+/* Changed since the reader last saw it, like an unread mark. */
+.updated {
+  align-self: center;
+  width: var(--size-dot);
+  height: var(--size-dot);
+  margin-left: var(--space-2);
+  flex-shrink: 0;
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+  animation: dotIn var(--duration-slow) var(--ease-out);
+}
+
+@keyframes dotIn {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+
+/* With the rail folded, the dot moves onto the status icon. */
+.collapsed .isUpdated .status {
+  position: relative;
+}
+.collapsed .isUpdated .status::after {
+  content: '';
+  position: absolute;
+  top: calc(var(--space-0-5) * -1);
+  right: calc(var(--space-0-5) * -1);
+  width: var(--size-dot);
+  height: var(--size-dot);
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+  box-shadow: 0 0 0 var(--space-0-5) var(--color-bg);
+}
