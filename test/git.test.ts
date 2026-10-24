@@ -302,6 +302,21 @@ describe('loadReview', () => {
     assert.equal(link.newContents, 'target.txt');
   });
 
+  it('shows a file turned into a symlink as one type change, next to other files', async () => {
+    const repo = featureRepo({ 'a.ts': 'a\n', 'link.txt': 'target\n', 'z.ts': 'z\n' });
+    repo.remove('link.txt').symlink('a.ts', 'link.txt');
+    repo.write({ 'a.ts': 'a2\n', 'z.ts': 'z2\n' });
+
+    const review = await loadReview({ cwd: repo.dir });
+    assert.deepEqual(review.files.map((f) => f.path), ['a.ts', 'link.txt', 'z.ts']);
+    const link = file(review, 'link.txt');
+    assert.equal(link.status, 'type-changed');
+    assert.deepEqual([link.oldMode, link.newMode], ['100644', '120000']);
+    assert.deepEqual([link.oldContents, link.newContents], ['target\n', 'a.ts']);
+    assert.equal(link.patch.match(/^diff --git /gm)?.length, 2);
+    assert.match(file(review, 'z.ts').patch, /^\+z2$/m);
+  });
+
   it('flags lockfiles, minified files and linguist-generated files', async () => {
     const repo = featureRepo({ 'readme.md': 'hi\n' });
     repo.write({
