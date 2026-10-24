@@ -1,5 +1,5 @@
 [app-16-live-edit] info: reading "const { sections, emptyMessage, dimmedIds, dismiss } = useRideHistory(riderId);" at 44.0 px, after the edit "const { sections, emptyMessage, dimmedIds, dismiss } = useRideHistory(riderId);" at 44.0 px (scrollTop 1280 → 2144)
-[app-10-big-branch] info: 120 cards, scroll frame median 15.6 ms, worst 78.2 ms
+[app-10-big-branch] info: 120 cards, scroll frame median 15.5 ms, worst 47.3 ms
 [app-04-no-base] error: Failed to load resource: the server responded with a status of 409 (Conflict)
 [app-04-no-base] error: Failed to load resource: the server responded with a status of 409 (Conflict)
 [app-04-no-base] error: Failed to load resource: the server responded with a status of 409 (Conflict)
