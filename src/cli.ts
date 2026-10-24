@@ -128,12 +128,13 @@ export async function main(args = process.argv.slice(2)): Promise<void> {
 
   // A --base that doesn't exist is a typo to fix now. A base that can't be
   // detected is left to the page, which explains what was tried.
-  let baseLabel = 'detected base';
-  try {
-    baseLabel = (await detectBase(repo, options.base)).ref;
-  } catch (error) {
-    if (!(error instanceof BaseNotFoundError)) throw error;
-    if (options.base) fail(`couldn't find a branch or commit named "${options.base}".`);
+  if (options.base) {
+    try {
+      await detectBase(repo, options.base);
+    } catch (error) {
+      if (!(error instanceof BaseNotFoundError)) throw error;
+      fail(`couldn't find a branch or commit named "${options.base}".`);
+    }
   }
 
   let server;
@@ -151,6 +152,7 @@ export async function main(args = process.argv.slice(2)): Promise<void> {
   }
 
   const branch = repo.branch ?? repo.shortHead;
+  const baseLabel = (await server.currentBase()) ?? 'no base found';
   process.stdout.write(
     `\n  ${bold('onceover')}  ${repo.name} ${dim('·')} ${branch} ${dim('→')} ${baseLabel}\n` +
       `  ${server.url}\n\n` +
