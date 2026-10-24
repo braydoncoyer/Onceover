@@ -1,4 +1,7 @@
 import { parseDiffFromFile, type FileDiffMetadata } from '@pierre/diffs';
+import type { ReviewFile, ReviewMeta } from '../lib/types';
+
+export type { ChangeOrigin, ReviewFile, ReviewMeta } from '../lib/types';
 
 import useRideHistoryOld from './files/useRideHistory.old.ts.txt?raw';
 import useRideHistoryNew from './files/useRideHistory.new.ts.txt?raw';
@@ -10,32 +13,6 @@ import sectionListNew from './files/section-list.new.tsx.txt?raw';
 import rideStatusOld from './files/rideStatus.old.ts.txt?raw';
 import statusLabelsNew from './files/statusLabels.new.ts.txt?raw';
 import dimmedRowsOld from './files/dimmedRows.old.ts.txt?raw';
-
-/** Where a file's changes live, relative to the merge-base. */
-export type ChangeOrigin = 'committed' | 'uncommitted' | 'new';
-
-export interface ReviewFile {
-  id: string;
-  path: string;
-  prevPath?: string;
-  status: 'modified' | 'added' | 'deleted' | 'renamed' | 'binary' | 'generated';
-  origin: ChangeOrigin;
-  additions: number;
-  deletions: number;
-  comments: number;
-  diff?: FileDiffMetadata;
-  /** Over the large-file threshold, so the diff waits behind a Load diff button. */
-  large?: boolean;
-  /** Binary files only. */
-  size?: { before: number; after: number };
-}
-
-export interface ReviewMeta {
-  repo: string;
-  branch: string;
-  base: string;
-  mergeBase: string;
-}
 
 export const meta: ReviewMeta = {
   repo: 'rideshare-web',
@@ -145,15 +122,3 @@ export const files: ReviewFile[] = [
     comments: 0,
   },
 ];
-
-export const totals = files.reduce(
-  (sum, file) => {
-    if (file.status === 'generated') return sum;
-    return {
-      additions: sum.additions + file.additions,
-      deletions: sum.deletions + file.deletions,
-      comments: sum.comments + file.comments,
-    };
-  },
-  { additions: 0, deletions: 0, comments: 0 },
-);

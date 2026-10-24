@@ -1,4 +1,4 @@
-import type { ReviewMeta } from '../fixtures/diff';
+import type { ReviewMeta } from '../lib/types';
 import type { DiffStyle } from '../theme/diffs';
 import {
   IconArrowRight,

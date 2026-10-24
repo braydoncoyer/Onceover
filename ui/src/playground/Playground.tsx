@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Segmented } from '../components/ui';
 import type { DiffStyle } from '../theme/diffs';
-import { ReviewView } from './ReviewView';
+import { ReviewView } from '../components/ReviewView';
+import { files, meta } from '../fixtures/diff';
 import { StatesView } from './StatesView';
 import { TokensView } from './TokensView';
 import s from './Playground.module.css';
@@ -22,6 +23,8 @@ export function Playground() {
     <div className={s.app}>
       {view === 'review' && (
         <ReviewView
+          meta={meta}
+          files={files}
           initialViewed={params.get('viewed')?.split(',').filter(Boolean) ?? []}
           initialDiffStyle={(params.get('diff') as DiffStyle) ?? 'unified'}
           initialRailCollapsed={params.get('rail') === 'collapsed'}

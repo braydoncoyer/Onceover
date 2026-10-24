@@ -1,4 +1,4 @@
-import type { ReviewFile } from '../fixtures/diff';
+import type { ReviewFile } from '../lib/types';
 import { shortenMiddle } from '../lib/path';
 import { IconCheck, IconChevronDown, IconComment, IconStatus } from './Icons';
 import { CountBadge, Counts, Kbd } from './ui';
