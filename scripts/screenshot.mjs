@@ -156,7 +156,9 @@ await shoot('09-comments', 'chrome=0&comments=1&file=use-ride-history', {
 // Dragging across line numbers picks a range; letting go opens the box on it.
 await shoot('11-comment-drag', 'chrome=0&comments=1&file=use-ride-history', {
   prepare: async (page) => {
-    await page.locator('[data-scroll-root]').evaluate((node) => node.scrollBy(0, 700));
+    // Line 60 a third of the way down, so the box that opens under it has room.
+    await lineNumber(page, 'use-ride-history', 60).evaluate((node) => node.scrollIntoView({ block: 'start' }));
+    await page.locator('[data-scroll-root]').evaluate((node) => node.scrollBy(0, -280));
     await page.waitForTimeout(300);
     const from = await lineNumber(page, 'use-ride-history', 60).boundingBox();
     const to = await lineNumber(page, 'use-ride-history', 62).boundingBox();
@@ -176,6 +178,18 @@ await shoot('11-comment-drag', 'chrome=0&comments=1&file=use-ride-history', {
       },
     },
   ],
+});
+// A thread's add row opens a box at the bottom of the same card.
+await shoot('12b-comment-reply', 'chrome=0&comments=1&file=use-ride-history', {
+  prepare: async (page) => {
+    const thread = page.locator('#file-use-ride-history [data-comment-thread]').filter({ hasText: 'Lines 40–43' });
+    await thread.evaluate((node) => node.scrollIntoView({ block: 'center' }));
+    await page.waitForTimeout(300);
+    await thread.getByRole('button', { name: 'Add another comment' }).click();
+    await page.waitForTimeout(300);
+    await page.keyboard.type('And keep the Map, since the card reads from it.');
+    await page.waitForTimeout(150);
+  },
 });
 await shoot('13-comments-menu', 'chrome=0&comments=1', {
   prepare: async (page) => {
@@ -239,6 +253,8 @@ function makeRepo(name) {
 
 // Committed, uncommitted and new changes, like the playground fixture.
 const reviewRepo = makeRepo('review');
+// The reviewer named on comments, the same on any machine.
+git(reviewRepo, 'config', 'user.name', 'Sam Rivera');
 write(reviewRepo, {
   'client/src/views/RideHistory/useRideHistory.ts': fixture('useRideHistory.new.ts.txt'),
   'app/src/ui/lib/list/section-list.tsx': fixture('section-list.new.tsx.txt'),

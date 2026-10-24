@@ -87,6 +87,7 @@ export function toReviewMeta(meta: MetaResponse): ReviewMeta {
     base: meta.base.ref,
     defaultBase: meta.defaultBase,
     mergeBase: meta.mergeBase.slice(0, 7),
+    reviewer: meta.reviewer ?? null,
   };
 }
 

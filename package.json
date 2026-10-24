@@ -21,6 +21,7 @@
     "typecheck": "tsc -p . && tsc -p tsconfig.node.json",
     "preview": "vite preview",
     "screenshot": "node scripts/screenshot.mjs",
+    "check:typing": "node scripts/check-typing.mjs",
     "test": "node --test 'test/**/*.test.ts'",
     "start": "node src/cli.ts"
   },
