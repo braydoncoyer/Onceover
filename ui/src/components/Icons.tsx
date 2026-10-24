@@ -40,6 +40,14 @@ export const IconBranch = (p: IconProps) => (
   </Svg>
 );
 
+export const IconCommit = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="8" cy="8" r="2.5" style={tint} />
+    <circle cx="8" cy="8" r="2.5" />
+    <path d="M1.75 8h3.75M10.5 8h3.75" />
+  </Svg>
+);
+
 export const IconRepo = (p: IconProps) => (
   <Svg {...p}>
     <path d="M3.25 3.5a2 2 0 0 1 2-2h7.5V11H5.25a2 2 0 0 0-2 2V3.5Z" style={tint} />

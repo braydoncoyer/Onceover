@@ -1,0 +1,189 @@
+.root {
+  position: relative;
+  display: inline-flex;
+  /* The branch under review gives way first; the base keeps its full name. */
+  flex-shrink: 0;
+  max-width: var(--size-popover);
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + var(--space-1-5));
+  left: 0;
+  z-index: var(--z-popover);
+  display: flex;
+  flex-direction: column;
+  width: var(--size-popover);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-popover);
+  overflow: hidden;
+  /* The menu can open inside centered copy, like the no-base panel. */
+  text-align: start;
+  animation: menu-in var(--duration-base) var(--ease-out);
+  transform-origin: top left;
+}
+
+.center {
+  left: 50%;
+  translate: -50% 0;
+  transform-origin: top center;
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--space-1) * -1)) scale(0.98);
+  }
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--space-10);
+  padding-inline: var(--space-3);
+  border-bottom: var(--size-hairline) solid var(--color-hairline);
+  cursor: text;
+}
+
+.searchIcon {
+  color: var(--color-text-tertiary);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: var(--text-md);
+  letter-spacing: var(--tracking-tight);
+  color: var(--color-text);
+}
+.input::placeholder {
+  color: var(--color-text-tertiary);
+}
+.input:focus-visible {
+  box-shadow: none;
+}
+
+.list {
+  max-height: var(--size-popover-list);
+  overflow-y: auto;
+  padding: var(--space-1);
+  overscroll-behavior: contain;
+}
+
+.group {
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--size-row);
+  padding-inline: var(--space-2);
+  border-radius: var(--radius-md);
+  font-size: var(--text-md);
+  letter-spacing: var(--tracking-tight);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+.option.active {
+  background: var(--color-surface-raised-hover);
+  color: var(--color-text);
+}
+.option[aria-selected='true'] {
+  color: var(--color-text);
+}
+
+.optionIcon {
+  color: var(--color-text-tertiary);
+}
+.option[aria-selected='true'] .optionIcon {
+  color: var(--color-added);
+}
+
+.ref {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag {
+  flex-shrink: 0;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-tertiary);
+}
+
+.check {
+  display: inline-grid;
+  place-items: center;
+  width: var(--size-icon);
+  height: var(--size-icon);
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+}
+
+.pending {
+  width: var(--space-1-5);
+  height: var(--space-1-5);
+  border-radius: var(--radius-full);
+  background: var(--color-text-secondary);
+  animation: pulse var(--duration-pulse) var(--ease-out) infinite alternate;
+}
+
+@keyframes pulse {
+  from {
+    opacity: var(--opacity-faint);
+  }
+}
+
+.note {
+  margin: 0;
+  padding: var(--space-3) var(--space-2);
+  font-size: var(--text-md);
+  color: var(--color-text-tertiary);
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+}
+.loadingRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--size-row);
+  padding-inline: var(--space-2);
+}
+
+.error {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-top: var(--size-hairline) solid var(--color-hairline);
+  font-size: var(--text-sm);
+  color: var(--color-warning);
+}
+
+.footer {
+  padding: var(--space-2) var(--space-3);
+  border-top: var(--size-hairline) solid var(--color-hairline);
+  font-size: var(--text-sm);
+  color: var(--color-text-tertiary);
+}

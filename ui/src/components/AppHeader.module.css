@@ -64,10 +64,11 @@
 
 .basePicker {
   display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
   align-items: center;
   gap: var(--space-1);
   height: var(--size-control);
-  margin-inline: calc(var(--space-1) * -1) 0;
   padding-inline: var(--space-1-5) var(--space-1);
   border-radius: var(--radius-md);
   font-size: var(--text-lg);
@@ -79,12 +80,41 @@
     background-color var(--duration-fast) var(--ease-out),
     color var(--duration-fast) var(--ease-out);
 }
-.basePicker:hover {
+/* Pulls the label in so its hover fill doesn't widen the gap after the arrow.
+   The margin sits on the wrapper, so the button still sizes to its whole name. */
+.basePickerRoot {
+  margin-inline-start: calc(var(--space-1) * -1);
+}
+
+.basePicker:hover,
+.basePicker[aria-expanded='true'] {
   color: var(--color-text);
   background: var(--color-surface-raised);
 }
-.basePicker svg {
+.basePicker:active {
+  background: var(--color-surface-raised-hover);
+}
+
+.baseName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.caret {
   color: var(--color-text-tertiary);
+  transition: transform var(--duration-base) var(--ease-out);
+}
+.basePicker[aria-expanded='true'] .caret {
+  transform: rotate(180deg);
+}
+
+.commitIcon {
+  color: var(--color-text-secondary);
+}
+
+.sha {
+  font-family: var(--font-mono);
+  font-variant-numeric: var(--font-numeric);
 }
 
 .totals {

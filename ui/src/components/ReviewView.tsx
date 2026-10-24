@@ -4,6 +4,7 @@ import type { DiffStyle } from '../theme/diffs';
 import { AppHeader } from './AppHeader';
 import { FileCard } from './FileCard';
 import { FileRail } from './FileRail';
+import { SkeletonCard, SkeletonRail } from './SkeletonCard';
 import s from './ReviewView.module.css';
 
 interface ReviewViewProps {
@@ -15,6 +16,11 @@ interface ReviewViewProps {
   initialDiffStyle?: DiffStyle;
   initialRailCollapsed?: boolean;
   initialFile?: string;
+  /** Shows skeletons in place of the files, while a new base's diff loads. */
+  loading?: boolean;
+  onPickBase?: (base: string | null) => Promise<void>;
+  /** The keyboard hint under the rail. Off until the shortcuts exist. */
+  railHint?: boolean;
 }
 
 export function ReviewView({
@@ -25,6 +31,9 @@ export function ReviewView({
   initialDiffStyle = 'unified',
   initialRailCollapsed = false,
   initialFile,
+  loading = false,
+  onPickBase,
+  railHint = true,
 }: ReviewViewProps) {
   const [diffStyle, setDiffStyle] = useState<DiffStyle>(initialDiffStyle);
   const [viewed, setViewed] = useState<Set<string>>(() => new Set(initialViewed));
@@ -101,9 +110,14 @@ export function ReviewView({
         comments={totals.comments}
         diffStyle={diffStyle}
         onDiffStyleChange={setDiffStyle}
+        onPickBase={onPickBase}
       />
-      <div className={s.body}>
-        {files.length > 0 && (
+      <div className={s.body} aria-busy={loading || undefined}>
+        {loading ? (
+          <div className={s.railSkeleton}>
+            <SkeletonRail />
+          </div>
+        ) : files.length > 0 && (
           <FileRail
             files={files}
             currentId={currentId}
@@ -111,12 +125,19 @@ export function ReviewView({
             collapsed={railCollapsed}
             onToggleCollapsed={() => setRailCollapsed((value) => !value)}
             onSelect={select}
+            hint={railHint}
           />
         )}
         <main ref={scrollRef} className={s.scroll} data-scroll-root>
           <div className={s.stack}>
-            {files.length === 0 && empty}
-            {files.map((file) => (
+            {loading && (
+              <>
+                <SkeletonCard />
+                <SkeletonCard />
+              </>
+            )}
+            {!loading && files.length === 0 && empty}
+            {!loading && files.map((file) => (
               <FileCard
                 key={file.id}
                 file={file}

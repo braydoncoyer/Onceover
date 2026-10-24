@@ -6,8 +6,11 @@ export interface BaseInfo {
   ref: string;
   /** Commit the base points at. */
   sha: string;
-  /** How the base was chosen. */
-  source: 'option' | 'origin-head' | 'fallback';
+  /**
+   * How the base was chosen: the `--base` flag, the base picked in the page
+   * this run, the base saved from an earlier run, or detection.
+   */
+  source: 'option' | 'picked' | 'saved' | 'origin-head' | 'fallback';
 }
 
 /** Bases tried in order when `origin/HEAD` isn't set. Remote refs first, since local `main` is often stale. */

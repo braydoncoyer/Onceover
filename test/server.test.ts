@@ -74,6 +74,14 @@ function request(
   });
 }
 
+function putBase(server: OnceoverServer, base: unknown, headers: Record<string, string> = {}) {
+  return request(server, '/api/base', {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json', ...headers },
+    body: JSON.stringify({ base }),
+  });
+}
+
 function putReview(server: OnceoverServer, review: unknown, headers: Record<string, string> = {}) {
   return request(server, '/api/review', {
     method: 'PUT',
@@ -125,6 +133,7 @@ describe('server API', () => {
     assert.equal(meta.head, repo.git('rev-parse', 'HEAD'));
     assert.equal(meta.shortHead, repo.git('rev-parse', '--short', 'HEAD'));
     assert.deepEqual(meta.base, { ref: 'origin/main', sha: repo.git('rev-parse', 'origin/main'), source: 'origin-head' });
+    assert.equal(meta.defaultBase, 'origin/main');
     assert.equal(meta.mergeBase, repo.git('rev-parse', 'origin/main'));
     assert.equal(meta.worktree, repo.dir);
     assert.equal(meta.isLinkedWorktree, false);
@@ -214,6 +223,93 @@ describe('server API', () => {
     assert.equal(missing.json<ApiError>().error.code, 'not-found');
     const method = await request(server, '/api/diff', { method: 'DELETE' });
     assert.equal(method.status, 405);
+  });
+});
+
+describe('base picker', () => {
+  it('switches the base, diffs against it and remembers it next run', async () => {
+    const repo = featureRepo();
+    repo.git('branch', 'dev');
+    const first = await serve(repo);
+    const res = await putBase(first, 'dev');
+    assert.equal(res.status, 200);
+    const meta = res.json<MetaResponse>();
+    assert.deepEqual(meta.base, { ref: 'dev', sha: repo.git('rev-parse', 'dev'), source: 'picked' });
+    assert.equal(meta.defaultBase, 'origin/main');
+    assert.equal(meta.mergeBase, repo.git('rev-parse', 'dev'));
+    const diff = (await request(first, '/api/diff')).json<DiffResponse>();
+    assert.deepEqual(diff.files.map((file) => file.path), ['new.ts', 'unstaged.ts']);
+    assert.equal((await request(first, '/api/review')).json<ReviewResponse>().base, 'dev');
+    assert.match(repo.read('.git/onceover/settings.json'), /"base": "dev"/);
+    await first.close();
+
+    const second = await serve(repo);
+    const again = (await request(second, '/api/meta')).json<MetaResponse>();
+    assert.equal(again.base.ref, 'dev');
+    assert.equal(again.base.source, 'saved');
+  });
+
+  it('lets --base win over the saved base until a new pick', async () => {
+    const repo = featureRepo();
+    repo.git('branch', 'dev', 'feature~1');
+    repo.git('branch', 'staging', 'feature~1');
+    await putBase(await serve(repo), 'dev');
+    const server = await serve(repo, { base: 'staging' });
+    assert.equal((await request(server, '/api/meta')).json<MetaResponse>().base.ref, 'staging');
+    await putBase(server, 'origin/main');
+    assert.equal((await request(server, '/api/meta')).json<MetaResponse>().base.ref, 'origin/main');
+  });
+
+  it('goes back to the detected base on null', async () => {
+    const repo = featureRepo();
+    repo.git('branch', 'dev', 'feature~1');
+    const server = await serve(repo);
+    await putBase(server, 'dev');
+    const meta = (await putBase(server, null)).json<MetaResponse>();
+    assert.equal(meta.base.ref, 'origin/main');
+    assert.equal(meta.base.source, 'origin-head');
+    const next = (await request(await serve(repo), '/api/meta')).json<MetaResponse>();
+    assert.equal(next.base.ref, 'origin/main');
+  });
+
+  it('turns away a base that is missing or shares no history, keeping the current one', async () => {
+    const repo = featureRepo();
+    repo.commitAll('Commit the rest');
+    repo.git('switch', '--quiet', '--orphan', 'unrelated');
+    repo.commitAll('Unrelated');
+    repo.git('switch', '--quiet', 'feature');
+    const server = await serve(repo);
+
+    const missing = await putBase(server, 'nope');
+    assert.equal(missing.status, 409);
+    assert.deepEqual(missing.json<ApiError>().error.tried, ['nope']);
+    const unrelated = await putBase(server, 'unrelated');
+    assert.equal(unrelated.status, 409);
+    assert.equal(unrelated.json<ApiError>().error.code, 'no-merge-base');
+    for (const body of ['', 3, ['dev']]) {
+      assert.equal((await putBase(server, body)).status, 400, JSON.stringify(body));
+    }
+    assert.equal((await request(server, '/api/meta')).json<MetaResponse>().base.ref, 'origin/main');
+  });
+
+  it('falls back to detection when the saved base is gone', async () => {
+    const repo = featureRepo();
+    repo.git('branch', 'dev', 'feature~1');
+    await putBase(await serve(repo), 'dev');
+    repo.git('branch', '--delete', '--force', 'dev');
+    const meta = (await request(await serve(repo), '/api/meta')).json<MetaResponse>();
+    assert.equal(meta.base.ref, 'origin/main');
+  });
+
+  it('lists the saved base first among the bases it tried when nothing is found', async () => {
+    const repo = TestRepo.init();
+    repo.git('branch', 'dev');
+    repo.git('branch', '--move', 'main', 'feature');
+    await putBase(await serve(repo), 'dev');
+    repo.git('branch', '--delete', '--force', 'dev');
+    const res = await request(await serve(repo), '/api/meta');
+    assert.equal(res.status, 409);
+    assert.deepEqual(res.json<ApiError>().error.tried, ['dev', 'origin/HEAD', 'origin/main', 'origin/master', 'main', 'master']);
   });
 });
 
@@ -326,6 +422,7 @@ describe('server safety', () => {
       assert.equal((await request(server, path)).status, 200, path);
     }
     await putReview(server, { viewed: ['new.ts'] });
+    await putBase(server, 'main');
 
     const afterSnap = snapshot(repo.dir);
     for (const key of afterSnap.keys()) if (key.startsWith('.git/onceover')) afterSnap.delete(key);

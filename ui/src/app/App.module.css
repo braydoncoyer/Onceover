@@ -43,3 +43,10 @@
   width: 100%;
   max-width: calc(var(--size-content-max) / 2);
 }
+
+.pickerButton {
+  composes: button secondary from '../components/ui.module.css';
+}
+.pickerButton svg {
+  color: var(--color-text-tertiary);
+}

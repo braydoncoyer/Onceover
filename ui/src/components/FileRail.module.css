@@ -122,6 +122,13 @@
   color: var(--color-text-tertiary);
 }
 
+.isGenerated .name {
+  color: var(--color-text-secondary);
+}
+.isGenerated .counts {
+  opacity: var(--opacity-faint);
+}
+
 .isDeleted .name {
   text-decoration: line-through;
   text-decoration-color: var(--color-text-quaternary);
@@ -135,14 +142,14 @@
 }
 
 .counts {
-  opacity: 0.72;
+  opacity: var(--opacity-soft);
   transition: opacity var(--duration-fast) var(--ease-out);
 }
 .counts > span {
   font-size: var(--text-xs);
 }
 .isViewed .counts {
-  opacity: 0.36;
+  opacity: var(--opacity-faint);
 }
 
 .comments {
