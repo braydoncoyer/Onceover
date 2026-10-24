@@ -48,10 +48,7 @@ export function ReviewView({
       ),
     [reviewable],
   );
-  const viewedCount = useMemo(
-    () => reviewable.filter((file) => viewed.has(file.id)).length,
-    [reviewable, viewed],
-  );
+  const viewedCount = useMemo(() => reviewable.filter((file) => viewed.has(file.id)).length, [reviewable, viewed]);
 
   const setFileViewed = useCallback((id: string, isViewed: boolean) => {
     setViewed((prev) => {
@@ -106,14 +103,16 @@ export function ReviewView({
         onDiffStyleChange={setDiffStyle}
       />
       <div className={s.body}>
-        <FileRail
-          files={files}
-          currentId={currentId}
-          viewed={viewed}
-          collapsed={railCollapsed}
-          onToggleCollapsed={() => setRailCollapsed((value) => !value)}
-          onSelect={select}
-        />
+        {files.length > 0 && (
+          <FileRail
+            files={files}
+            currentId={currentId}
+            viewed={viewed}
+            collapsed={railCollapsed}
+            onToggleCollapsed={() => setRailCollapsed((value) => !value)}
+            onSelect={select}
+          />
+        )}
         <main ref={scrollRef} className={s.scroll} data-scroll-root>
           <div className={s.stack}>
             {files.length === 0 && empty}
