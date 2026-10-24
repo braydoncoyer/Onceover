@@ -264,6 +264,61 @@ await shoot('app-02-review-scrolled', reviewUrl, {
     await page.waitForTimeout(400);
   },
 });
+// N twice: the second change, flashed under its file header.
+await shoot('app-11-next-change', reviewUrl, {
+  prepare: async (page) => {
+    await page.keyboard.press('n');
+    await page.waitForTimeout(150);
+    await page.keyboard.press('n');
+    await page.waitForTimeout(120);
+  },
+});
+// V on the first two files (J moves on), then a reload: the marks are saved.
+await shoot('app-12-viewed-saved', reviewUrl, {
+  prepare: async (page) => {
+    await page.keyboard.press('v');
+    await page.waitForTimeout(200);
+    await page.keyboard.press('j');
+    await page.waitForTimeout(200);
+    await page.keyboard.press('v');
+    await page.waitForTimeout(300);
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.evaluate(() => document.fonts.ready);
+    await page.waitForTimeout(1200);
+  },
+});
+// Clear the marks for the shots after this one.
+await fetch(new URL('/api/review', reviewUrl), {
+  method: 'PUT',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ viewed: [] }),
+});
+await shoot('app-13-file-finder', reviewUrl, {
+  prepare: async (page) => {
+    await page.keyboard.press('ControlOrMeta+k');
+    await page.waitForTimeout(250);
+    await page.keyboard.type('ride');
+    await page.keyboard.press('ArrowDown');
+    await page.waitForTimeout(250);
+  },
+});
+await shoot('app-14-shortcuts', reviewUrl, {
+  prepare: async (page) => {
+    await page.keyboard.press('?');
+    await page.waitForTimeout(300);
+  },
+});
+// Halfway down a file: its header is stuck, with a shadow under it.
+await shoot('app-15-stuck-header', reviewUrl, {
+  prepare: async (page) => {
+    await page.locator('[data-scroll-root]').evaluate((node) => {
+      const card = node.querySelector('section[aria-label$="useRideHistory.ts"]');
+      node.scrollTop += card.getBoundingClientRect().top - node.getBoundingClientRect().top + 420;
+    });
+    await page.waitForTimeout(400);
+  },
+  clip: async () => ({ x: 300, y: 0, width: 1140, height: 420 }),
+});
 await shoot('app-06-base-picker', reviewUrl, {
   prepare: async (page) => {
     await page.getByRole('button', { name: /origin\/main/ }).click();

@@ -36,8 +36,10 @@ export function FileCard({
   return (
     <section
       id={`file-${file.id}`}
-      className={`${s.card} ${collapsed ? s.collapsedCard : ''}`}
+      className={`${s.card} ${collapsed ? s.collapsedCard : ''} ${viewed ? s.viewedCard : ''}`}
       aria-label={file.path}
+      data-file-card
+      data-collapsed={collapsed || undefined}
     >
       <div ref={sentinel} className={s.sentinel} aria-hidden="true" />
       <header className={`${s.header} ${stuck && !collapsed ? s.stuck : ''}`}>
@@ -78,7 +80,7 @@ export function FileCard({
             onClick={onToggleCollapsed}
             aria-expanded={!collapsed}
             aria-label={collapsed ? 'Expand file' : 'Collapse file'}
-            title={collapsed ? 'Expand' : 'Collapse'}
+            title={collapsed ? 'Unfold (Z)' : 'Fold (Z)'}
           >
             <IconChevronDown size="var(--size-icon-sm)" />
           </Button>

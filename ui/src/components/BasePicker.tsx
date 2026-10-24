@@ -161,7 +161,7 @@ export function BasePicker({
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => onOpenChange(!open)}
-        title="Change base branch"
+        title="Change base branch (B)"
       >
         {children}
       </button>

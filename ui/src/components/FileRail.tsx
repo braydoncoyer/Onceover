@@ -23,6 +23,7 @@ interface FileRailProps {
   collapsed: boolean;
   onToggleCollapsed: () => void;
   onSelect: (id: string) => void;
+  onShowShortcuts?: () => void;
   /** Show the keyboard hint at the bottom. */
   hint?: boolean;
 }
@@ -34,6 +35,7 @@ export function FileRail({
   collapsed,
   onToggleCollapsed,
   onSelect,
+  onShowShortcuts,
   hint = true,
 }: FileRailProps) {
   const listRef = useRef<HTMLUListElement>(null);
@@ -115,9 +117,19 @@ export function FileRail({
 
       {hint && (
         <div className={s.footer}>
-          <Kbd>J</Kbd>
-          <Kbd>K</Kbd>
-          <span>to move between files</span>
+          <span className={s.hint}>
+            <Kbd cap>J</Kbd>
+            <Kbd cap>K</Kbd>
+            <span className={s.hintLabel}>files</span>
+          </span>
+          <span className={s.hint}>
+            <Kbd cap>N</Kbd>
+            <Kbd cap>P</Kbd>
+            <span className={s.hintLabel}>changes</span>
+          </span>
+          <button type="button" className={s.help} onClick={onShowShortcuts} title="Keyboard shortcuts (?)">
+            <Kbd cap>?</Kbd>
+          </button>
         </div>
       )}
     </nav>

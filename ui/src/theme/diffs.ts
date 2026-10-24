@@ -242,14 +242,31 @@ const unsafeCSS = /* css */ `
     padding-inline: var(--space-1) var(--space-4);
   }
 
-  /* Word-level changes: a brighter rounded pill over the line tint. */
-  [data-diff-span] {
-    border-radius: var(--radius-sm);
+  /*
+   * Word-level changes: a brighter rounded pill over the line tint. The pill
+   * is drawn a little wider than its words, as in the Linear mockup, without
+   * moving any text: it sits behind the line's text in its own layer.
+   */
+  [data-line] {
+    isolation: isolate;
   }
-  [data-line-type=change-addition] [data-diff-span] {
+  [data-diff-span] {
+    position: relative;
+    background-color: transparent;
+  }
+  [data-diff-span]::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset-block: var(--size-word-pill-block);
+    inset-inline: calc(var(--size-word-pill-inline) * -1);
+    border-radius: var(--radius-sm);
+    pointer-events: none;
+  }
+  [data-line-type=change-addition] [data-diff-span]::before {
     background-color: var(--color-diff-added-word);
   }
-  [data-line-type=change-deletion] [data-diff-span] {
+  [data-line-type=change-deletion] [data-diff-span]::before {
     background-color: var(--color-diff-removed-word);
   }
 

@@ -9,18 +9,29 @@ import {
   ApiRequestError,
   getDiff,
   getMeta,
+  getReview,
   listen,
   putBase,
+  putReview,
   toReviewFile,
   toReviewMeta,
   type MetaResponse,
+  type ReviewState,
 } from '../lib/api';
 import type { ReviewFile, ReviewMeta } from '../lib/types';
 import s from './App.module.css';
 
 type State =
   | { kind: 'loading' }
-  | { kind: 'ready'; meta: ReviewMeta; worktree: string; files: ReviewFile[]; switching: boolean }
+  | {
+      kind: 'ready';
+      meta: ReviewMeta;
+      worktree: string;
+      files: ReviewFile[];
+      /** Files still viewed: marked, and unchanged since. */
+      viewed: string[];
+      switching: boolean;
+    }
   | { kind: 'error'; error: ApiRequestError | Error };
 
 /** The real review screen: the server's diff in the playground's components. */
@@ -28,20 +39,34 @@ export function App() {
   const [state, setState] = useState<State>({ kind: 'loading' });
   const [worktree, setWorktree] = useState<string | null>(null);
   const loadRef = useRef<AbortController | null>(null);
+  /** The saved review, so saving viewed marks keeps its comments and note. */
+  const reviewRef = useRef<ReviewState | null>(null);
+  const saveRef = useRef<Promise<unknown>>(Promise.resolve());
 
   const load = useCallback(async () => {
     loadRef.current?.abort();
     const controller = new AbortController();
     loadRef.current = controller;
     try {
-      const [meta, diff] = await Promise.all([getMeta(controller.signal), getDiff(controller.signal)]);
+      const [meta, diff, review] = await Promise.all([
+        getMeta(controller.signal),
+        getDiff(controller.signal),
+        // A review that can't be read starts fresh rather than blocking the diff.
+        getReview(controller.signal).catch((error: Error) => {
+          if (error.name === 'AbortError') throw error;
+          return null;
+        }),
+      ]);
       if (controller.signal.aborted) return;
+      const files = orderFiles(diff.files.map(toReviewFile));
+      reviewRef.current = review && { viewed: review.viewed, viewedVersions: review.viewedVersions, comments: review.comments, note: review.note };
       setWorktree(meta.worktree);
       setState({
         kind: 'ready',
         meta: toReviewMeta(meta),
         worktree: meta.worktree,
-        files: orderFiles(diff.files.map(toReviewFile)),
+        files,
+        viewed: stillViewed(files, review),
         switching: false,
       });
       document.title = `${titleOf(meta)} · Onceover`;
@@ -79,6 +104,28 @@ export function App() {
     [load],
   );
 
+  /** Saves viewed marks with each file's current version. Saves run one after another. */
+  const saveViewed = useCallback(
+    (viewed: string[]) => {
+      if (state.kind !== 'ready') return;
+      const versions = new Map(state.files.map((file) => [file.id, file.version]));
+      const viewedVersions: Record<string, string> = {};
+      for (const id of viewed) {
+        const version = versions.get(id);
+        if (version) viewedVersions[id] = version;
+      }
+      const review: ReviewState = {
+        ...(reviewRef.current ?? { comments: [], note: '' }),
+        viewed,
+        viewedVersions,
+      };
+      reviewRef.current = review;
+      // A failed save shouldn't interrupt the review; the next change tries again.
+      saveRef.current = saveRef.current.then(() => putReview(review)).catch(() => {});
+    },
+    [state],
+  );
+
   if (state.kind === 'loading') return <Loading />;
   if (state.kind === 'error') return <LoadError error={state.error} onRetry={load} onPickBase={pickBase} />;
 
@@ -88,9 +135,10 @@ export function App() {
         key={`${state.worktree}\u0000${state.meta.base}`}
         meta={state.meta}
         files={state.files}
+        initialViewed={state.viewed}
         loading={state.switching}
         onPickBase={pickBase}
-        railHint={false}
+        onViewedChange={saveViewed}
         empty={
           <StatePanel icon={<IconSparkle />} title={`Nothing to review against ${state.meta.base}`}>
             <code>{state.meta.branch}</code> has no commits, staged, unstaged or new files since it left{' '}
@@ -100,6 +148,18 @@ export function App() {
       />
     </div>
   );
+}
+
+/** Viewed marks that still hold: a file that changed since it was marked needs another look. */
+function stillViewed(files: ReviewFile[], review: ReviewState | null): string[] {
+  if (!review) return [];
+  const byId = new Map(files.map((file) => [file.id, file]));
+  return review.viewed.filter((id) => {
+    const file = byId.get(id);
+    if (!file || file.status === 'generated') return false;
+    const saved = review.viewedVersions[id];
+    return !saved || saved === file.version;
+  });
 }
 
 /**
