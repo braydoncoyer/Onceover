@@ -15,7 +15,9 @@
   ],
   "scripts": {
     "dev": "vite",
+    "demo": "node scripts/demo-data.ts && vite --mode demo --open /demo.html",
     "build": "tsc -p . && vite build && tsc -p tsconfig.build.json",
+    "build:demo": "node scripts/demo-data.ts && vite build --mode demo && node scripts/demo-finish.mjs",
     "typecheck": "tsc -p . && tsc -p tsconfig.node.json",
     "preview": "vite preview",
     "screenshot": "node scripts/screenshot.mjs",
