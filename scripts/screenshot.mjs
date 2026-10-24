@@ -130,6 +130,66 @@ await shoot('detail-changes', 'chrome=0&file=section-list', {
   },
 });
 
+// ── Comments ──
+/** A line number in a file's diff, for clicking and dragging. */
+const lineNumber = (page, id, line) =>
+  page.locator(`#file-${id} diffs-container`).locator(`[data-column-number="${line}"]`).first();
+// Saved comments under their lines, one outdated, and a file comment atop its card.
+await shoot('09-comments', 'chrome=0&comments=1&file=use-ride-history', {
+  prepare: async (page) => {
+    await page.locator('[data-scroll-root]').evaluate((node) => node.scrollBy(0, 560));
+    await page.waitForTimeout(300);
+  },
+  then: [
+    {
+      name: '10-comments-outdated',
+      prepare: async (page) => {
+        await page.locator('#file-section-list').evaluate((node) => node.scrollIntoView({ block: 'start' }));
+        await page.locator('[data-scroll-root]').evaluate((node) => node.scrollBy(0, 260));
+        await page.waitForTimeout(300);
+        await page.locator('#file-section-list [data-comment-id]').first().hover();
+        await page.waitForTimeout(200);
+      },
+    },
+  ],
+});
+// Dragging across line numbers picks a range; letting go opens the box on it.
+await shoot('11-comment-drag', 'chrome=0&comments=1&file=use-ride-history', {
+  prepare: async (page) => {
+    await page.locator('[data-scroll-root]').evaluate((node) => node.scrollBy(0, 700));
+    await page.waitForTimeout(300);
+    const from = await lineNumber(page, 'use-ride-history', 60).boundingBox();
+    const to = await lineNumber(page, 'use-ride-history', 62).boundingBox();
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 5 });
+    await page.waitForTimeout(150);
+  },
+  then: [
+    {
+      name: '12-comment-box',
+      prepare: async (page) => {
+        await page.mouse.up();
+        await page.waitForTimeout(300);
+        await page.keyboard.type('Name this for what it holds, like titleById.');
+        await page.waitForTimeout(150);
+      },
+    },
+  ],
+});
+await shoot('13-comments-menu', 'chrome=0&comments=1', {
+  prepare: async (page) => {
+    await page.getByTitle('Comments and review note').click();
+    await page.waitForTimeout(300);
+  },
+});
+await shoot('14-done', 'chrome=0&comments=1', {
+  prepare: async (page) => {
+    await page.keyboard.press('ControlOrMeta+Shift+Enter');
+    await page.waitForTimeout(400);
+  },
+});
+
 // ── The real app ─────────────────────────────────────────────────────────
 
 const sandbox = mkdtempSync(join(tmpdir(), 'onceover-shots-'));
@@ -350,6 +410,43 @@ await fetch(new URL('/api/base', reviewUrl), {
   method: 'PUT',
   headers: { 'content-type': 'application/json' },
   body: JSON.stringify({ base: null }),
+});
+
+// ── Comments in the app ──
+// A comment and a note, saved, survive a reload; Done copies them and saves last-review.md.
+await shoot('app-19-comment-saved', reviewUrl, {
+  prepare: async (page) => {
+    const line = page.locator('section[aria-label$="useRideHistory.ts"] diffs-container').locator('[data-column-number="44"]').first();
+    await line.scrollIntoViewIfNeeded();
+    await line.click();
+    await page.waitForTimeout(300);
+    await page.keyboard.type('This closes the loop above; keep the two in step.');
+    await page.keyboard.press('ControlOrMeta+Enter');
+    await page.getByTitle('Comments and review note').click();
+    await page.keyboard.type('Looks close. Tighten the naming first.');
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(800);
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.evaluate(() => document.fonts.ready);
+    await page.waitForTimeout(1200);
+    await page.locator('[data-comment-id]').first().evaluate((node) => node.scrollIntoView({ block: 'center' }));
+    await page.waitForTimeout(300);
+  },
+  then: [
+    {
+      name: 'app-20-done',
+      prepare: async (page) => {
+        await page.keyboard.press('ControlOrMeta+Shift+Enter');
+        await page.waitForTimeout(800);
+      },
+    },
+  ],
+});
+// Clear the comments for the shots after this one.
+await fetch(new URL('/api/review', reviewUrl), {
+  method: 'PUT',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ comments: [], note: '' }),
 });
 
 // ── Live refresh ──

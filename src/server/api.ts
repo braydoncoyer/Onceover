@@ -75,6 +75,14 @@ export interface ReviewResponse extends ReviewState {
   base: string;
 }
 
+/** Where Done reviewing saved its copy of the review. */
+export interface LastReviewResponse {
+  /** Absolute path of `last-review.md`. */
+  path: string;
+  /** The same path, relative to the worktree when it's inside it, to show on the page. */
+  shown: string;
+}
+
 /** Every error the API returns has this shape. */
 export interface ApiError {
   error: {

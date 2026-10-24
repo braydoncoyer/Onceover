@@ -53,6 +53,22 @@ export class ReviewStore {
     return run;
   }
 
+  /** The last review copied with Done reviewing, kept as Markdown beside the store. */
+  get lastReviewFile(): string {
+    return join(this.dir, 'last-review.md');
+  }
+
+  /** Saves the block Done reviewing copied. Throws `InvalidReviewError` on a malformed body. */
+  saveLastReview(input: unknown): Promise<string> {
+    if (!isObject(input) || typeof input.markdown !== 'string') {
+      return Promise.reject(new InvalidReviewError('Send `markdown` as text.'));
+    }
+    const text = input.markdown.endsWith('\n') ? input.markdown : `${input.markdown}\n`;
+    const run = this.queue.then(() => this.writeAtomic(this.lastReviewFile, text).then(() => this.lastReviewFile));
+    this.queue = run.catch(() => {});
+    return run;
+  }
+
   private async read(): Promise<StoreFile> {
     let text: string;
     try {
@@ -72,12 +88,16 @@ export class ReviewStore {
   }
 
   /** Writes to a temp file and renames it into place, so a crash never leaves half a file. */
-  private async write(store: StoreFile): Promise<void> {
+  private write(store: StoreFile): Promise<void> {
+    return this.writeAtomic(this.file, `${JSON.stringify({ ...store, version: VERSION }, null, 2)}\n`);
+  }
+
+  private async writeAtomic(file: string, text: string): Promise<void> {
     await mkdir(this.dir, { recursive: true });
-    const temp = join(this.dir, `.review-${randomUUID()}.json`);
+    const temp = join(this.dir, `.onceover-${randomUUID()}.tmp`);
     try {
-      await writeFile(temp, `${JSON.stringify({ ...store, version: VERSION }, null, 2)}\n`);
-      await rename(temp, this.file);
+      await writeFile(temp, text);
+      await rename(temp, file);
     } catch (error) {
       await rm(temp, { force: true });
       throw error;

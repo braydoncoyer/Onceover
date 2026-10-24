@@ -11,7 +11,6 @@ const file = (id: string, version: string, extra: Partial<ReviewFile> = {}): Rev
   origin: 'uncommitted',
   additions: 1,
   deletions: 0,
-  comments: 0,
   version,
   ...extra,
 });

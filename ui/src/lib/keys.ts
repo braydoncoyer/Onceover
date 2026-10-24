@@ -8,6 +8,10 @@ export const MOD_LABEL = isMac ? '⌘' : 'Ctrl';
 export interface Shortcut {
   key: string;
   mod?: boolean;
+  /** Shift must be held too. Without it, shift is ignored, so `?` works. */
+  shift?: boolean;
+  /** Runs even while typing in a field, as Done reviewing does from a comment box. */
+  whileTyping?: boolean;
   run: () => void;
 }
 
@@ -18,8 +22,9 @@ function isTyping(target: EventTarget | null): boolean {
 }
 
 /**
- * Page-wide single-key shortcuts. Ignored while typing, while another modifier
- * is held, and while `enabled` is false (an open menu has the keyboard).
+ * Page-wide single-key shortcuts. Ignored while typing (unless marked to run
+ * then), while another modifier is held, and while `enabled` is false (an
+ * open menu has the keyboard).
  */
 export function useShortcuts(shortcuts: Shortcut[], enabled = true) {
   const latest = useRef(shortcuts);
@@ -28,12 +33,18 @@ export function useShortcuts(shortcuts: Shortcut[], enabled = true) {
   useEffect(() => {
     if (!enabled) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.isComposing || isTyping(event.target)) return;
+      if (event.defaultPrevented || event.isComposing) return;
+      const typing = isTyping(event.target);
       const mod = isMac ? event.metaKey : event.ctrlKey;
       const other = isMac ? event.ctrlKey : event.metaKey;
       if (event.altKey || other) return;
+      const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
       const shortcut = latest.current.find(
-        (item) => item.key === event.key && Boolean(item.mod) === mod,
+        (item) =>
+          (item.key === event.key || (item.mod && item.key === key)) &&
+          Boolean(item.mod) === mod &&
+          (item.shift === undefined || item.shift === event.shiftKey) &&
+          (!typing || item.whileTyping),
       );
       if (!shortcut) return;
       event.preventDefault();
