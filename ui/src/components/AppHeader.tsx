@@ -24,8 +24,9 @@ interface AppHeaderProps {
   onDiffStyleChange: (style: DiffStyle) => void;
 }
 
-const RING_RADIUS = 6;
-const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+/* Linear-style progress glyph: an outer ring with a pie that fills inside it. */
+const PIE_RADIUS = 1.75;
+const PIE_CIRCUMFERENCE = 2 * Math.PI * PIE_RADIUS;
 
 export function AppHeader({
   meta,
@@ -73,18 +74,17 @@ export function AppHeader({
         />
         <span className={s.divider} />
         <span className={s.progress} aria-label={`${viewed} of ${total} files viewed`}>
-          <svg className={s.ring} viewBox="0 0 16 16" aria-hidden="true">
-            <circle className={s.ringTrack} cx="8" cy="8" r={RING_RADIUS} fill="none" strokeWidth="2" />
+          <svg className={`${s.ring} ${progress > 0 ? s.ringActive : ''}`} viewBox="0 0 16 16" aria-hidden="true">
+            <circle className={s.ringOuter} cx="8" cy="8" r="6.25" fill="none" strokeWidth="1.5" />
             <circle
-              className={s.ringValue}
+              className={s.ringPie}
               cx="8"
               cy="8"
-              r={RING_RADIUS}
+              r={PIE_RADIUS}
               fill="none"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeDasharray={RING_CIRCUMFERENCE}
-              strokeDashoffset={RING_CIRCUMFERENCE * (1 - progress)}
+              strokeWidth={PIE_RADIUS * 2}
+              strokeDasharray={PIE_CIRCUMFERENCE}
+              strokeDashoffset={PIE_CIRCUMFERENCE * (1 - progress)}
             />
           </svg>
           <span>
