@@ -1,0 +1,40 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dialog);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: var(--size-dialog-top) var(--space-6) var(--space-6);
+  background: var(--color-backdrop);
+  animation: backdrop-in var(--duration-base) var(--ease-out);
+}
+
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: var(--size-menu);
+  max-height: 100%;
+  border-radius: var(--radius-xl);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-popover);
+  overflow: hidden;
+  animation: panel-in var(--duration-slow) var(--ease-out);
+}
+.panel:focus-visible {
+  box-shadow: var(--shadow-popover);
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--space-1) * -1)) scale(0.985);
+  }
+}

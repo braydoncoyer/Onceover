@@ -14,6 +14,8 @@ export interface ReviewFile {
   additions: number;
   deletions: number;
   comments: number;
+  /** Changes whenever the file's diff does, so a viewed mark can tell it's stale. */
+  version?: string;
   diff?: FileDiffMetadata;
   /** Over the large-file threshold, so the diff waits behind a Load diff button. */
   large?: boolean;

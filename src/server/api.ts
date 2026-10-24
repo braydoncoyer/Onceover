@@ -60,6 +60,11 @@ export interface ReviewComment {
 export interface ReviewState {
   /** Paths marked viewed. */
   viewed: string[];
+  /**
+   * The version of each viewed file when it was marked, set by the page. A
+   * file whose version has moved on since is no longer viewed.
+   */
+  viewedVersions: Record<string, string>;
   comments: ReviewComment[];
   /** The note for the whole review, by the Done button. */
   note: string;

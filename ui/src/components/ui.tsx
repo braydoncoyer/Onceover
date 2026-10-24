@@ -49,8 +49,9 @@ export function Segmented<T extends string>({
   );
 }
 
-export function Kbd({ children }: { children: ReactNode }) {
-  return <kbd className={s.kbd}>{children}</kbd>;
+/** A key name. `cap` draws it as a small keycap, for menus and the shortcuts list. */
+export function Kbd({ children, cap }: { children: ReactNode; cap?: boolean }) {
+  return <kbd className={cx(s.kbd, cap && s.kbdCap)}>{children}</kbd>;
 }
 
 export function Counts({
@@ -117,7 +118,7 @@ export function ViewedToggle({
       className={s.viewed}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      title="Mark as viewed (V)"
+      title={checked ? 'Mark as not viewed (V)' : 'Mark as viewed (V)'}
     >
       <span className={s.box}>
         <IconCheck size="var(--size-icon-xs)" />

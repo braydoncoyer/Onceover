@@ -43,3 +43,23 @@
   flex-shrink: 0;
   border-right: var(--size-hairline) solid var(--color-hairline-soft);
 }
+
+/* The change N or P just landed on: a tint and a bar that fade out. */
+.flash {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: var(--color-flash);
+  box-shadow: inset var(--size-bar) 0 0 var(--color-flash-bar);
+  opacity: 0;
+  animation: flash var(--duration-flash) var(--ease-out);
+}
+
+@keyframes flash {
+  from,
+  30% {
+    opacity: 1;
+  }
+}

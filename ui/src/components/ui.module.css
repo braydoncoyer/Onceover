@@ -108,6 +108,20 @@
   color: inherit;
   opacity: var(--opacity-muted);
 }
+.kbdCap {
+  justify-content: center;
+  min-width: var(--size-kbd);
+  height: var(--size-kbd);
+  padding-inline: var(--space-1);
+  border-radius: var(--radius-sm);
+  font-variant-numeric: var(--font-numeric);
+  color: var(--color-text-secondary);
+  background: var(--color-surface-raised-hover);
+  box-shadow:
+    inset 0 0 0 var(--size-hairline) var(--color-hairline-strong),
+    0 var(--size-hairline) 0 var(--color-surface-sunken);
+  opacity: 1;
+}
 
 /* ── Counts ─────────────────────────────────────────────────── */
 .counts {
