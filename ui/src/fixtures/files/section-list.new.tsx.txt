@@ -1,0 +1,62 @@
+import * as React from 'react';
+import { useListNavigation } from './use-list-navigation';
+import type { RowIndexPath, Section } from './types';
+
+export interface SectionListProps<Item> {
+  readonly className?: string;
+  readonly sections: ReadonlyArray<Section<Item>>;
+  readonly renderSectionHeader: (section: Section<Item>) => React.ReactNode;
+  readonly renderItem: (item: Item, indexPath: RowIndexPath) => React.ReactNode;
+
+  /** Called when a row is clicked or activated with Enter */
+  readonly onRowClick?: (
+    indexPath: RowIndexPath,
+    e: React.MouseEvent<any> | React.KeyboardEvent<any>
+  ) => void
+
+  /** This function will be called when a row obtains focus, no matter how */
+  readonly onRowFocus?: (
+    indexPath: RowIndexPath,
+    e: React.KeyboardEvent<any>
+  ) => void
+
+  /** This function will be called when a row obtains focus via keyboard */
+  readonly onRowKeyboardFocus?: (
+    indexPath: RowIndexPath,
+    e: React.KeyboardEvent<any>
+  ) => void
+
+  /** This function will be called when a row loses focus */
+  readonly onRowBlur?: (
+    indexPath: RowIndexPath,
+    e: React.FocusEvent<any>
+  ) => void
+}
+
+export function SectionList<Item>(props: SectionListProps<Item>) {
+  const { className, sections, renderSectionHeader, renderItem } = props;
+  const nav = useListNavigation(sections, {
+    onActivate: props.onRowClick,
+    onFocus: props.onRowFocus,
+    onKeyboardFocus: props.onRowKeyboardFocus,
+    onBlur: props.onRowBlur,
+  });
+
+  return (
+    <div className={className} role="list" onKeyDown={nav.onKeyDown}>
+      {sections.map((section, sectionIndex) => (
+        <section key={sectionIndex} role="group">
+          {renderSectionHeader(section)}
+          {section.items.map((item, row) => {
+            const indexPath = { section: sectionIndex, row };
+            return (
+              <div key={row} role="listitem" {...nav.rowProps(indexPath)}>
+                {renderItem(item, indexPath)}
+              </div>
+            );
+          })}
+        </section>
+      ))}
+    </div>
+  );
+}

@@ -1,0 +1,181 @@
+/*
+ * Onceover design tokens.
+ *
+ * Every color, font, size, radius, shadow and motion value in the UI lives
+ * here. Components and the Pierre diff theme only ever reference these
+ * variables. Values were sampled from docs/design/mockup-linear.png and
+ * docs/design/mockup-changes.png.
+ */
+
+:root {
+  color-scheme: dark;
+
+  /* ── Gray layers ─────────────────────────────────────────────── */
+  --color-bg: #0f1011; /* window canvas */
+  --color-bg-chrome: #121314; /* header bar */
+  --color-surface: #141516; /* cards, rail */
+  --color-surface-hover: #18191b;
+  --color-surface-raised: #1c1d1f; /* selected pill, selected row */
+  --color-surface-raised-hover: #222326;
+  --color-surface-sunken: #0b0c0d;
+  --color-hairline: #232426; /* card borders */
+  --color-hairline-soft: #1d1e20; /* dividers inside a card */
+  --color-hairline-strong: #2c2d30; /* control borders */
+  --color-scrim: rgb(15 16 17 / 0%);
+  --color-scrim-solid: rgb(15 16 17 / 100%);
+
+  /* ── Text (no pure white) ────────────────────────────────────── */
+  --color-text: #d8d9dc;
+  --color-text-strong: #e8e9eb;
+  --color-text-secondary: #8b8e95;
+  --color-text-tertiary: #62656c;
+  --color-text-quaternary: #45474c;
+  --color-text-on-accent: #0f1011;
+
+  /* ── Accent and status ───────────────────────────────────────── */
+  --color-accent: #8a90f2;
+  --color-accent-soft: rgb(138 144 242 / 16%);
+  --color-accent-ring: rgb(138 144 242 / 55%);
+  --color-added: #5aa457;
+  --color-added-strong: #6fbf6b;
+  --color-removed: #c95e5b;
+  --color-removed-strong: #e07471;
+  --color-renamed: #6b9ee8;
+  --color-warning: #d6a64a;
+
+  /* ── Diff line tints ─────────────────────────────────────────── */
+  --color-diff-bg: var(--color-surface);
+  --color-diff-context: var(--color-surface);
+  --color-diff-added-bg: #151c17;
+  --color-diff-added-gutter: #151d17;
+  --color-diff-added-word: #213a24;
+  --color-diff-added-bar: #4c9349;
+  --color-diff-removed-bg: #211819;
+  --color-diff-removed-gutter: #22191a;
+  --color-diff-removed-word: #4a2125;
+  --color-diff-removed-bar: #c6514f;
+  --color-diff-line-number: #4f5257;
+  --color-diff-line-number-added: #4d8f4a;
+  --color-diff-line-number-removed: #a5514e;
+  --color-diff-hover: rgb(255 255 255 / 2.5%);
+  --color-diff-separator: #17181a;
+  --color-diff-separator-text: #62656c;
+  --color-diff-buffer: #1a1b1d;
+
+  /* ── Syntax (tuned to both mockups) ──────────────────────────── */
+  --syntax-foreground: #c9cbd0;
+  --syntax-comment: #5f6268;
+  --syntax-keyword: #c48bbb; /* const, for, new, return */
+  --syntax-modifier: #d0767c; /* readonly, export, async */
+  --syntax-type: #a196ea; /* Set, Map, RowIndexPath */
+  --syntax-function: #8bc4c6; /* useComputed, add */
+  --syntax-variable: #d69b7a; /* declared names */
+  --syntax-parameter: #b3a6ef;
+  --syntax-property: #c9cbd0;
+  --syntax-string: #a9bf8f;
+  --syntax-number: #d9a07c;
+  --syntax-constant: #d9a07c;
+  --syntax-tag: #e0898a;
+  --syntax-attribute: #b3a6ef;
+  --syntax-punctuation: #7d8087;
+  --syntax-operator: #c48bbb;
+
+  /* ── Type ────────────────────────────────────────────────────── */
+  --font-ui: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono Variable', 'Geist Mono', 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+  --font-features-ui: 'cv01', 'cv11', 'ss03';
+  --font-features-mono: 'liga' 0, 'calt' 0;
+  --font-numeric: tabular-nums;
+
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-md: 13px;
+  --text-lg: 14px;
+  --text-xl: 20px;
+  --text-code: 13px;
+
+  --leading-tight: 16px;
+  --leading-ui: 20px;
+  --leading-code: 22px;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 590;
+
+  --tracking-tight: -0.01em;
+  --tracking-normal: 0;
+  --tracking-caps: 0.04em;
+
+  /* ── Space (4 px grid) ───────────────────────────────────────── */
+  --space-0: 0;
+  --space-px: 1px;
+  --space-0-5: 2px;
+  --space-1: 4px;
+  --space-1-5: 6px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ── Sizes ───────────────────────────────────────────────────── */
+  --size-header: 52px;
+  --size-file-header: 44px;
+  --size-rail: 280px;
+  --size-rail-collapsed: 48px;
+  --size-row: 30px;
+  --size-control: 28px;
+  --size-control-sm: 20px;
+  --size-icon: 16px;
+  --size-icon-sm: 14px;
+  --size-icon-xs: 12px;
+  --size-badge: 18px;
+  --size-checkbox: 16px;
+  --size-bar: 2px;
+  --size-hairline: 1px;
+  --size-focus-ring: 2px;
+  --size-scrollbar: 8px;
+  --size-content-max: 1240px;
+  --size-fade: 96px;
+  --size-menu: 560px;
+
+  /* ── Radii ───────────────────────────────────────────────────── */
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 6px; /* rows, pills, buttons */
+  --radius-lg: 8px;
+  --radius-xl: 12px; /* cards */
+  --radius-full: 999px;
+
+  /* ── Shadows ─────────────────────────────────────────────────── */
+  --shadow-stuck: 0 1px 0 var(--color-hairline), 0 8px 16px -8px rgb(0 0 0 / 60%);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 30%);
+  --shadow-popover: 0 0 0 1px var(--color-hairline-strong), 0 16px 48px -8px rgb(0 0 0 / 70%);
+  --shadow-button-inset: inset 0 1px 0 rgb(255 255 255 / 4%);
+  --shadow-focus: 0 0 0 var(--size-focus-ring) var(--color-accent-ring);
+
+  /* ── Motion ──────────────────────────────────────────────────── */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 120ms;
+  --duration-base: 150ms;
+  --duration-slow: 180ms;
+  --duration-shimmer: 1600ms;
+
+  /* ── Layers ──────────────────────────────────────────────────── */
+  --z-sticky: 10;
+  --z-header: 20;
+  --z-popover: 30;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+    --duration-shimmer: 0ms;
+  }
+}
