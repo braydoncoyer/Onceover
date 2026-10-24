@@ -1,9 +1,16 @@
-import { processFile } from '@pierre/diffs';
+import { parseDiffFromFile, processFile, type FileDiffMetadata } from '@pierre/diffs';
 import type { ChangedFile } from '../../../src/git/index.ts';
-import type { ApiError, DiffResponse, MetaResponse, ServerEvent } from '../../../src/server/api.ts';
+import type {
+  ApiError,
+  BaseRequest,
+  BranchesResponse,
+  DiffResponse,
+  MetaResponse,
+  ServerEvent,
+} from '../../../src/server/api.ts';
 import type { ReviewFile, ReviewMeta } from './types';
 
-export type { DiffResponse, MetaResponse } from '../../../src/server/api.ts';
+export type { BranchesResponse, DiffResponse, MetaResponse } from '../../../src/server/api.ts';
 
 /** Past this many changed lines a file waits behind a Load diff button. */
 const LARGE_FILE_LINES = 2000;
@@ -22,10 +29,10 @@ export class ApiRequestError extends Error {
   }
 }
 
-async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
+async function requestJson<T>(path: string, init: RequestInit = {}): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(path, { headers: { accept: 'application/json' }, signal });
+    res = await fetch(path, { ...init, headers: { accept: 'application/json', ...init.headers } });
   } catch (error) {
     if ((error as Error).name === 'AbortError') throw error;
     throw new ApiRequestError(0, null, "Can't reach the Onceover server. Is it still running?");
@@ -35,17 +42,32 @@ async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
   return body as T;
 }
 
-export const getMeta = (signal?: AbortSignal) => getJson<MetaResponse>('/api/meta', signal);
-export const getDiff = (signal?: AbortSignal) => getJson<DiffResponse>('/api/diff', signal);
+export const getMeta = (signal?: AbortSignal) => requestJson<MetaResponse>('/api/meta', { signal });
+export const getDiff = (signal?: AbortSignal) => requestJson<DiffResponse>('/api/diff', { signal });
+export const getBranches = (signal?: AbortSignal) => requestJson<BranchesResponse>('/api/branches', { signal });
+
+/** Switches the base and saves it for next run. Null goes back to the detected base. */
+export function putBase(base: string | null): Promise<MetaResponse> {
+  const body: BaseRequest = { base };
+  return requestJson<MetaResponse>('/api/base', {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
 
 export function toReviewMeta(meta: MetaResponse): ReviewMeta {
   return {
     repo: meta.repo,
     branch: meta.branch ?? meta.shortHead,
+    detached: meta.branch === null,
     base: meta.base.ref,
+    defaultBase: meta.defaultBase,
     mergeBase: meta.mergeBase.slice(0, 7),
   };
 }
+
+const SUBMODULE_MODE = '160000';
 
 /** Turns a file from the git core into what the file card renders. */
 export function toReviewFile(file: ChangedFile): ReviewFile {
@@ -53,36 +75,64 @@ export function toReviewFile(file: ChangedFile): ReviewFile {
     id: file.path,
     path: file.path,
     ...(file.prevPath ? { prevPath: file.prevPath } : {}),
-    status: file.binary
-      ? 'binary'
-      : file.generated
-        ? 'generated'
+    status: file.generated
+      ? 'generated'
+      : file.binary
+        ? 'binary'
         : file.status === 'type-changed'
           ? 'modified'
           : file.status,
     origin: file.origin,
+    uncommitted: file.origins.includes('uncommitted'),
     additions: file.additions,
     deletions: file.deletions,
     comments: 0,
+    ...(file.oldMode && file.newMode && file.oldMode !== file.newMode
+      ? { mode: { before: file.oldMode, after: file.newMode } }
+      : {}),
   };
 
-  if (file.binary) return { ...base, size: { before: file.oldSize ?? 0, after: file.newSize ?? 0 } };
-  if (file.submodule) return base;
-
-  try {
-    // Git's hunks, with both whole files so highlighting sees full context.
-    const diff = processFile(file.patch, {
-      isGitDiff: true,
-      oldFile: file.oldContents === null ? undefined : { name: file.prevPath ?? file.path, contents: file.oldContents },
-      newFile: file.newContents === null ? undefined : { name: file.path, contents: file.newContents },
-    });
+  if (file.submodule) {
+    // A submodule pointer has no contents, only the commits it moved between.
+    const commit = (sign: '-' | '+') => {
+      const prefix = `${sign}Subproject commit `;
+      return file.patch.split('\n').find((line) => line.startsWith(prefix))?.slice(prefix.length).trim() ?? null;
+    };
     return {
       ...base,
-      diff,
-      large: file.additions + file.deletions > LARGE_FILE_LINES,
+      status: file.status === 'type-changed' ? 'modified' : base.status,
+      additions: 0,
+      deletions: 0,
+      submodule: {
+        before: file.oldMode === SUBMODULE_MODE ? commit('-') : null,
+        after: file.newMode === SUBMODULE_MODE ? commit('+') : null,
+      },
     };
+  }
+
+  if (file.binary) {
+    return { ...base, binary: true, size: { before: file.oldSize, after: file.newSize } };
+  }
+
+  const diff = buildDiff(file);
+  if (!diff) return base;
+  return { ...base, diff, large: file.additions + file.deletions > LARGE_FILE_LINES };
+}
+
+function buildDiff(file: ChangedFile): FileDiffMetadata | null {
+  const oldFile = file.oldContents === null ? undefined : { name: file.prevPath ?? file.path, contents: file.oldContents };
+  const newFile = file.newContents === null ? undefined : { name: file.path, contents: file.newContents };
+  try {
+    // A type change comes as two patches (a deletion, then a creation), so
+    // diff the two sides directly instead.
+    if (file.status === 'type-changed' && oldFile && newFile) {
+      return parseDiffFromFile(oldFile, newFile, { context: 3 });
+    }
+    // Git's hunks, with both whole files so highlighting sees full context
+    // and folded lines can be expanded.
+    return processFile(file.patch, { isGitDiff: true, oldFile, newFile }) ?? null;
   } catch {
-    return base;
+    return null;
   }
 }
 
