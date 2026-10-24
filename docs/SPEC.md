@@ -15,11 +15,11 @@ A local, read-only diff viewer that shows everything a branch would ship in one 
 
 The UI is the product. Hold every screen to the craft of [Linear](https://linear.app), and spend more time on design and polish than on any other part of the build. Working but plain is not done.
 
-The two reference mockups are below and saved at `docs/design/mockup-linear.png` and `docs/design/mockup-changes.png`. Open both images before any UI work, and compare screenshots of the build against them at every UI milestone.
+The two reference mockups aren't in the repo. The notes below describe what to take from each, and the screenshots in `docs/screenshots` show where the build landed. Read both before any UI work.
 
 ### Mockup 1: Linear's agent review screen
 
-![Linear-style diff review: breadcrumb header, pill tabs, a diff card with tinted added and removed lines, and an agent panel on the right](design/mockup-linear.png)
+A Linear-style diff review: breadcrumb header, pill tabs, a diff card with tinted added and removed lines, and an agent panel on the right.
 
 What to take from it:
 
@@ -34,7 +34,7 @@ What to take from it:
 
 ### Mockup 2: Changes sidebar and diff
 
-![Changes view: a sidebar listing three changed files with shortened paths, and a large diff card with grouped added lines and green plus markers](design/mockup-changes.png)
+A Changes view: a sidebar listing three changed files with shortened paths, and a large diff card with grouped added lines and green plus markers.
 
 What to take from it:
 

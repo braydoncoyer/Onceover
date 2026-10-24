@@ -4,7 +4,7 @@
   "private": true,
   "description": "A local, read-only git diff viewer for reviewing what coding agents changed.",
   "type": "module",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "bin": {
     "onceover": "bin/onceover.js"
   },
