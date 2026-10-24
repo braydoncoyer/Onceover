@@ -10,25 +10,16 @@ export function splitPath(path: string): SplitPath {
 }
 
 /**
- * Shortens the folders between the first and last segments so a path fits
- * in `budget` characters, keeping the file name whole:
- * `app/src/ui/lib/list/section-list.tsx` → `app/src/…/section-list.tsx`.
+ * Collapses the folders between the first folder and the file name once a
+ * path runs past `budget` characters, keeping the file name whole:
+ * `app/src/ui/lib/list/section-list.tsx` → `app/…/section-list.tsx`.
  */
 export function shortenMiddle(path: string, budget: number): SplitPath {
   const { dir, name } = splitPath(path);
   if (path.length <= budget || !dir) return { dir, name };
-
   const folders = dir.split('/').filter(Boolean);
-  const kept: string[] = [];
-  let length = name.length + '…/'.length;
-  for (const folder of folders.slice(0, -1)) {
-    if (length + folder.length + 1 > budget) break;
-    kept.push(folder);
-    length += folder.length + 1;
-  }
-  if (kept.length === 0) kept.push(folders[0]);
-  if (kept.length === folders.length) return { dir, name };
-  return { dir: `${kept.join('/')}/…/`, name };
+  if (folders.length < 2) return { dir, name };
+  return { dir: `${folders[0]}/…/`, name };
 }
 
 export function formatBytes(bytes: number): string {

@@ -48,11 +48,11 @@
   --color-diff-context: var(--color-surface);
   --color-diff-added-bg: #151c17;
   --color-diff-added-gutter: #151d17;
-  --color-diff-added-word: #213a24;
+  --color-diff-added-word: #1d3121;
   --color-diff-added-bar: #4c9349;
   --color-diff-removed-bg: #211819;
   --color-diff-removed-gutter: #22191a;
-  --color-diff-removed-word: #4a2125;
+  --color-diff-removed-word: #3b1e21;
   --color-diff-removed-bar: #c6514f;
   --color-diff-line-number: #4f5257;
   --color-diff-line-number-added: #4d8f4a;
@@ -69,10 +69,10 @@
   --syntax-modifier: #d0767c; /* readonly, export, async */
   --syntax-type: #a196ea; /* Set, Map, RowIndexPath */
   --syntax-function: #8bc4c6; /* useComputed, add */
-  --syntax-variable: #d69b7a; /* declared names */
+  --syntax-variable: #d0a891; /* declared names */
   --syntax-parameter: #b3a6ef;
   --syntax-property: #c9cbd0;
-  --syntax-string: #a9bf8f;
+  --syntax-string: #a3b98c;
   --syntax-number: #d9a07c;
   --syntax-constant: #d9a07c;
   --syntax-tag: #e0898a;
@@ -125,7 +125,7 @@
   /* ── Sizes ───────────────────────────────────────────────────── */
   --size-header: 52px;
   --size-file-header: 44px;
-  --size-rail: 280px;
+  --size-rail: 300px;
   --size-rail-collapsed: 48px;
   --size-row: 30px;
   --size-control: 28px;

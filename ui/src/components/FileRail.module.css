@@ -94,20 +94,23 @@
 }
 
 .path {
+  display: flex;
   flex: 1;
   min-width: 0;
-  overflow: hidden;
   white-space: nowrap;
-  text-overflow: ellipsis;
   font-size: var(--text-md);
   letter-spacing: var(--tracking-tight);
 }
 
 .dir {
+  flex-shrink: 0;
   color: var(--color-text-tertiary);
 }
 
 .name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: var(--color-text);
 }
 
@@ -132,11 +135,14 @@
 }
 
 .counts {
-  opacity: 0.8;
+  opacity: 0.72;
   transition: opacity var(--duration-fast) var(--ease-out);
 }
+.counts > span {
+  font-size: var(--text-xs);
+}
 .isViewed .counts {
-  opacity: 0.4;
+  opacity: 0.36;
 }
 
 .comments {

@@ -73,7 +73,7 @@ await shoot('02-review-scrolled', 'chrome=0&file=use-ride-history', {
 });
 await shoot('03-review-viewed', 'chrome=0&viewed=ride-history-page,status-labels,dimmed-rows&file=ride-history-page');
 await shoot('04-review-split', 'chrome=0&diff=split&rail=collapsed');
-await shoot('05-states', 'view=states&chrome=0', { height: 2300 });
+await shoot('05-states', 'view=states&chrome=0', { height: 1340 });
 await shoot('06-tokens', 'view=tokens&chrome=0', { height: 1500 });
 await shoot('07-interaction', 'chrome=0', {
   prepare: async (page) => {
@@ -98,7 +98,7 @@ await shoot('detail-changes', 'chrome=0&file=section-list', {
   },
 });
 
-writeFileSync(join(outDir, 'console.log'), logs.length ? `${logs.join('\n')}\n` : 'No console errors or warnings.\n');
+writeFileSync(join(outDir, 'console.txt'), logs.length ? `${logs.join('\n')}\n` : 'No console errors or warnings.\n');
 await browser.close();
 server.close();
-console.log(logs.length ? `${logs.length} console messages, see console.log` : 'No console errors.');
+console.log(logs.length ? `${logs.length} console messages, see console.txt` : 'No console errors.');
