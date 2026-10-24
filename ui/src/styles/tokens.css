@@ -28,6 +28,19 @@
   --color-flash-bar: rgb(138 144 242 / 70%);
   --color-update-ring: rgb(138 144 242 / 45%); /* a card whose file just changed */
 
+  /* ── Comments ────────────────────────────────────────────────── */
+  --color-comment-bg: #18191b; /* a saved comment card, a step above the code */
+  --color-comment-hairline: #26272a;
+  --color-composer-bg: #1a1b1d; /* the box being typed in */
+  --color-composer-ring: rgb(138 144 242 / 40%); /* its border while focused */
+  --mix-selected-line: 14%; /* how much accent washes over lines picked for a comment */
+  --color-selected-number: #b6baf6;
+  --color-selected-bar: var(--color-accent);
+  --color-gutter-button: var(--color-accent);
+  --color-gutter-button-hover: #a3a8f5;
+  --color-outdated: var(--color-warning);
+  --color-outdated-soft: rgb(214 166 74 / 12%);
+
   /* ── Text (no pure white) ────────────────────────────────────── */
   --color-text: #d8d9dc;
   --color-text-strong: #e8e9eb;
@@ -170,6 +183,15 @@
   --size-toast: 36px;
   --size-dot: 6px; /* live status, and a file updated since it was seen */
   --size-dot-halo: 3px;
+  --size-comment-max: 720px; /* a comment card's width, so lines stay readable on wide screens */
+  --size-composer-min: 56px; /* the comment box's height before it grows with its text */
+  --size-composer-max: 320px;
+  --size-review-panel: 400px; /* the comments and note popover */
+  --size-review-list: 320px;
+  --size-done-panel: 440px;
+  --size-done-preview: 220px;
+  --size-note-max: 160px; /* the review note grows with its text up to here */
+  --size-gutter-button: 18px;
 
   /* ── Radii ───────────────────────────────────────────────────── */
   --radius-xs: 3px;

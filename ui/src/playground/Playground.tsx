@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Segmented } from '../components/ui';
 import type { DiffStyle } from '../theme/diffs';
 import { ReviewView } from '../components/ReviewView';
+import { fixtureComments, fixtureNote } from '../fixtures/comments';
 import { files, meta } from '../fixtures/diff';
 import type { LiveStatus } from '../lib/live';
 import { StatesView } from './StatesView';
@@ -13,7 +14,8 @@ type View = 'review' | 'states' | 'tokens';
 /*
  * URL params for screenshots: view=review|states|tokens, viewed=<ids>,
  * diff=split, rail=collapsed, file=<id> (scroll to), chrome=0 (hide switcher),
- * updated=<ids> (changed since last seen), live=live|offline|paused.
+ * updated=<ids> (changed since last seen), live=live|offline|paused,
+ * comments=1 (a review in progress, with a note).
  */
 const params = new URLSearchParams(window.location.search);
 
@@ -33,6 +35,8 @@ export function Playground() {
           initialFile={params.get('file') ?? undefined}
           initialUpdated={params.get('updated')?.split(',').filter(Boolean) ?? []}
           live={(params.get('live') as LiveStatus | null) ?? undefined}
+          initialComments={params.get('comments') === '1' ? fixtureComments() : undefined}
+          initialNote={params.get('comments') === '1' ? fixtureNote : undefined}
         />
       )}
       {view === 'states' && <StatesView />}

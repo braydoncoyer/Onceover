@@ -7,7 +7,7 @@ import { after, describe, it } from 'node:test';
 import { gunzipSync } from 'node:zlib';
 
 import { findRepo } from '../src/git/index.ts';
-import type { ApiError, BranchesResponse, DiffResponse, MetaResponse, ReviewResponse, ServerEvent } from '../src/server/api.ts';
+import type { ApiError, BranchesResponse, DiffResponse, LastReviewResponse, MetaResponse, ReviewResponse, ServerEvent } from '../src/server/api.ts';
 import { PortInUseError, startServer, type OnceoverServer } from '../src/server/server.ts';
 import { TestRepo, snapshot, tempDir } from './helpers/repo.ts';
 
@@ -452,6 +452,51 @@ describe('review storage', () => {
     const worktree = new TestRepo(worktreeDir);
     await putReview(await serve(worktree), { viewed: ['committed.ts'] });
     assert.match(repo.read('.git/worktrees/wt/onceover/review.json'), /committed\.ts/);
+  });
+});
+
+describe('Done reviewing', () => {
+  function putLast(server: OnceoverServer, body: unknown) {
+    return request(server, '/api/review/last', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  }
+
+  it('saves the copied review to <git-dir>/onceover/last-review.md, replacing the last one', async () => {
+    const repo = featureRepo();
+    const server = await serve(repo);
+    const outside = () => new Map([...snapshot(repo.dir)].filter(([path]) => !path.startsWith('.git/onceover')));
+    const before = outside();
+
+    const first = await putLast(server, { markdown: 'Review of feature against origin/main (0 comments)\n' });
+    assert.equal(first.status, 200);
+    const saved = first.json<LastReviewResponse>();
+    assert.equal(saved.shown, '.git/onceover/last-review.md');
+    assert.equal(saved.path, join(repo.dir, '.git', 'onceover', 'last-review.md'));
+
+    await putLast(server, { markdown: 'Review of feature against origin/main (1 comment)' });
+    assert.equal(repo.read('.git/onceover/last-review.md'), 'Review of feature against origin/main (1 comment)\n');
+    // Nothing outside .git/onceover moved: no index, worktree or ref changes.
+    assert.deepEqual(outside(), before);
+  });
+
+  it('turns away a body without Markdown', async () => {
+    const server = await serve(featureRepo());
+    for (const body of [{}, { markdown: 3 }, []]) {
+      const res = await putLast(server, body);
+      assert.equal(res.status, 400, JSON.stringify(body));
+    }
+  });
+
+  it('shows the full path for a linked worktree, whose git dir is outside it', async () => {
+    const repo = featureRepo();
+    const worktreeDir = join(tempDir('worktrees'), 'wt');
+    repo.git('worktree', 'add', '--quiet', '-b', 'agent', worktreeDir, 'feature');
+    const saved = (await putLast(await serve(new TestRepo(worktreeDir)), { markdown: 'x' })).json<LastReviewResponse>();
+    assert.equal(saved.shown, saved.path);
+    assert.equal(repo.read('.git/worktrees/wt/onceover/last-review.md'), 'x\n');
   });
 });
 

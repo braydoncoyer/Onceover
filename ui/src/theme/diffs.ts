@@ -161,6 +161,7 @@ export const diffHostStyle = {
   '--diffs-bg-addition-emphasis-override': 'var(--color-diff-added-word)',
   '--diffs-bg-deletion-emphasis-override': 'var(--color-diff-removed-word)',
   '--diffs-bg-selection-override': 'var(--color-accent)',
+  '--diffs-selection-number-fg': 'var(--color-selected-number)',
 } as CSSProperties;
 
 /*
@@ -294,6 +295,50 @@ const unsafeCSS = /* css */ `
     text-decoration: none;
   }
 
+  /*
+   * Lines picked for a comment: a soft accent wash over the line's own tint,
+   * an accent bar at the edge and bright numbers. The comment rows under them
+   * keep the plain background, so the box reads as sitting below the code.
+   */
+  [data-line][data-selected-line],
+  [data-column-number][data-selected-line],
+  [data-gutter-buffer][data-selected-line] {
+    --diffs-computed-selected-line-bg: color-mix(in srgb, var(--diffs-computed-diff-line-bg), var(--color-accent) var(--mix-selected-line));
+  }
+  [data-line-annotation][data-selected-line],
+  [data-gutter-buffer=annotation][data-selected-line] {
+    --diffs-computed-selected-line-bg: var(--diffs-computed-diff-line-bg);
+  }
+  [data-column-number][data-selected-line],
+  pre:not([data-diff-type=split]) [data-column-number][data-selected-line] [data-line-number-content]::after {
+    color: var(--color-selected-number);
+  }
+  [data-indicators=bars] [data-column-number][data-selected-line]::before {
+    width: var(--size-bar);
+    background-image: none;
+    background-color: var(--color-selected-bar);
+  }
+
+  /* The + that opens a comment, shown on hovering a line number. */
+  [data-utility-button] {
+    width: var(--size-gutter-button);
+    height: var(--size-gutter-button);
+    margin-block: calc((var(--leading-code) - var(--size-gutter-button)) / 2);
+    margin-right: calc(var(--size-gutter-button) * -1 + 1ch);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-gutter-button);
+    color: var(--color-text-on-accent);
+    box-shadow: var(--shadow-card);
+    transition: background-color var(--duration-fast) var(--ease-out);
+  }
+  [data-utility-button]:hover {
+    background-color: var(--color-gutter-button-hover);
+  }
+  [data-utility-button] [data-icon] {
+    width: var(--size-icon-xs);
+    height: var(--size-icon-xs);
+  }
+
   [data-code]::-webkit-scrollbar-thumb {
     background-color: transparent;
   }
@@ -305,7 +350,7 @@ const unsafeCSS = /* css */ `
 
 export type DiffStyle = 'unified' | 'split';
 
-export function diffOptions(diffStyle: DiffStyle): FileDiffOptions<undefined, undefined> {
+export function diffOptions<LAnnotation = undefined>(diffStyle: DiffStyle): FileDiffOptions<LAnnotation, undefined> {
   return {
     theme: THEME_NAME,
     themeType: 'dark',

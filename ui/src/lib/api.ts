@@ -5,6 +5,7 @@ import type {
   BaseRequest,
   BranchesResponse,
   DiffResponse,
+  LastReviewResponse,
   MetaResponse,
   ReviewResponse,
   ReviewState,
@@ -12,7 +13,7 @@ import type {
 } from '../../../src/server/api.ts';
 import type { ReviewFile, ReviewMeta } from './types';
 
-export type { BranchesResponse, DiffResponse, MetaResponse, ReviewResponse, ReviewState, ServerEvent } from '../../../src/server/api.ts';
+export type { BranchesResponse, DiffResponse, LastReviewResponse, MetaResponse, ReviewResponse, ReviewState, ServerEvent } from '../../../src/server/api.ts';
 
 /** Past this many changed lines a file waits behind a Load diff button. */
 const LARGE_FILE_LINES = 2000;
@@ -59,6 +60,15 @@ export function putReview(review: ReviewState): Promise<ReviewResponse> {
   });
 }
 
+/** Saves the block Done reviewing copied to `<git-dir>/onceover/last-review.md`. */
+export function putLastReview(markdown: string): Promise<LastReviewResponse> {
+  return requestJson<LastReviewResponse>('/api/review/last', {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ markdown }),
+  });
+}
+
 /** Switches the base and saves it for next run. Null goes back to the detected base. */
 export function putBase(base: string | null): Promise<MetaResponse> {
   const body: BaseRequest = { base };
@@ -99,7 +109,6 @@ export function toReviewFile(file: ChangedFile): ReviewFile {
     uncommitted: file.origins.includes('uncommitted'),
     additions: file.additions,
     deletions: file.deletions,
-    comments: 0,
     version: versionOf(file),
     ...(file.oldMode && file.newMode && file.oldMode !== file.newMode
       ? { mode: { before: file.oldMode, after: file.newMode } }

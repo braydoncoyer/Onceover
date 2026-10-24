@@ -233,3 +233,39 @@ export function FileTypeIcon({ path, size = 'var(--size-icon)' }: { path: string
     </svg>
   );
 }
+
+export const IconPencil = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M10.25 3.25 12.75 5.75 5.5 13H3v-2.5l7.25-7.25Z" style={tint} />
+    <path d="M10.25 3.25 12.75 5.75 5.5 13H3v-2.5l7.25-7.25ZM8.75 4.75l2.5 2.5" />
+  </Svg>
+);
+
+export const IconTrash = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 4.75h8l-.6 8.05a1.25 1.25 0 0 1-1.25 1.2H5.85a1.25 1.25 0 0 1-1.25-1.2L4 4.75Z" style={tint} />
+    <path d="M2.75 4.75h10.5M6.25 4.75V3.5c0-.41.34-.75.75-.75h2c.41 0 .75.34.75.75v1.25M4 4.75l.6 8.05a1.25 1.25 0 0 0 1.25 1.2h4.3a1.25 1.25 0 0 0 1.25-1.2L12 4.75" />
+  </Svg>
+);
+
+export const IconCopy = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="5.25" y="5.25" width="8.5" height="8.5" rx="1.75" style={tint} />
+    <rect x="5.25" y="5.25" width="8.5" height="8.5" rx="1.75" />
+    <path d="M10.75 5.25V4A1.75 1.75 0 0 0 9 2.25H4A1.75 1.75 0 0 0 2.25 4v5A1.75 1.75 0 0 0 4 10.75h1.25" />
+  </Svg>
+);
+
+export const IconNote = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="2.75" y="2.25" width="10.5" height="11.5" rx="2" style={tint} />
+    <rect x="2.75" y="2.25" width="10.5" height="11.5" rx="2" />
+    <path d="M5.5 5.75h5M5.5 8.25h5M5.5 10.75h2.75" />
+  </Svg>
+);
+
+export const IconPlus = (p: IconProps) => (
+  <Svg {...p} strokeWidth="1.75">
+    <path d="M8 3.25v9.5M3.25 8h9.5" />
+  </Svg>
+);

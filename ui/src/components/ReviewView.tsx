@@ -1,15 +1,20 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { changeBlocks, flashBlock, scrollBehavior } from '../lib/changes';
+import { reviewMarkdown, type ReviewComment } from '../lib/comments';
+import { copyText } from '../lib/clipboard';
 import { useShortcuts } from '../lib/keys';
 import { compareFiles, isEmptyDelta, type FilesDelta, type LiveStatus } from '../lib/live';
 import { captureAnchor, restoreAnchor, type ScrollAnchor } from '../lib/scrollAnchor';
 import type { ReviewFile, ReviewMeta } from '../lib/types';
+import { useCommentState } from '../lib/useCommentState';
 import type { DiffStyle } from '../theme/diffs';
-import { AppHeader } from './AppHeader';
+import { AppHeader, type DoneResult } from './AppHeader';
+import { CommentActionsContext, type Draft } from './Comments';
 import { FileCard } from './FileCard';
 import { FileFinder } from './FileFinder';
 import { FileRail } from './FileRail';
 import { ShortcutsHelp } from './ShortcutsHelp';
+import { UndoToast } from './UndoToast';
 import { UpdateToast } from './UpdateToast';
 import { SkeletonCard, SkeletonRail } from './SkeletonCard';
 import s from './ReviewView.module.css';
@@ -36,7 +41,16 @@ interface ReviewViewProps {
   synced?: number;
   /** Files to show as just updated on the first render, for the playground. */
   initialUpdated?: string[];
+  initialComments?: ReviewComment[];
+  initialNote?: string;
+  /** Called with every comment and the note after each change, to save them. */
+  onCommentsChange?: (comments: ReviewComment[], note: string) => void;
+  /** Saves the copied review beside the store. Resolves with the path to show, or null if it couldn't. */
+  onSaveReview?: (markdown: string) => Promise<string | null>;
 }
+
+const NO_COMMENTS: ReviewComment[] = [];
+const NO_DRAFTS: Draft[] = [];
 
 /** How long the stack holds its place while changed cards settle (unfolding, drawing), in ms. */
 const ANCHOR_HOLD_MS = 600;
@@ -61,6 +75,10 @@ export function ReviewView({
   live,
   synced = 0,
   initialUpdated = [],
+  initialComments = NO_COMMENTS,
+  initialNote = '',
+  onCommentsChange,
+  onSaveReview,
 }: ReviewViewProps) {
   const [diffStyle, setDiffStyle] = useState<DiffStyle>(initialDiffStyle);
   const [viewed, setViewed] = useState<Set<string>>(() => new Set(initialViewed));
@@ -83,6 +101,15 @@ export function ReviewView({
   /** What the last few refreshes changed, shown in a toast until it times out. */
   const [notice, setNotice] = useState<(FilesDelta & { id: number }) | null>(null);
   const anchor = useRef<ScrollAnchor | null>(null);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [done, setDone] = useState<DoneResult | null>(null);
+
+  /** Unfolds a card so a comment box on it can be seen. */
+  const openFile = useCallback((id: string) => {
+    setManualCollapsed((prev) => (prev[id] === false ? prev : { ...prev, [id]: false }));
+  }, []);
+  const review = useCommentState({ files, initialComments, initialNote, onOpenFile: openFile });
+  const { comments, note, drafts } = review;
 
   // A refresh brought new files. Settle it before the new list paints: a
   // changed file loses its viewed mark and unfolds, and the stack notes where
@@ -158,12 +185,37 @@ export function ReviewView({
         (sum, file) => ({
           additions: sum.additions + file.additions,
           deletions: sum.deletions + file.deletions,
-          comments: sum.comments + file.comments,
         }),
-        { additions: 0, deletions: 0, comments: 0 },
+        { additions: 0, deletions: 0 },
       ),
     [reviewable],
   );
+  const commentsByPath = useMemo(() => {
+    const map = new Map<string, ReviewComment[]>();
+    for (const comment of comments) {
+      if (comment.path === null) continue;
+      map.set(comment.path, [...(map.get(comment.path) ?? []), comment]);
+    }
+    return map;
+  }, [comments]);
+  const commentCounts = useMemo(
+    () => new Map([...commentsByPath].map(([path, list]) => [path, list.length])),
+    [commentsByPath],
+  );
+  const draftsByFile = useMemo(() => {
+    const map = new Map<string, Draft[]>();
+    for (const draft of drafts) map.set(draft.fileId, [...(map.get(draft.fileId) ?? []), draft]);
+    return map;
+  }, [drafts]);
+
+  // Save after each change, not on the first render.
+  const savedComments = useRef({ comments, note });
+  useEffect(() => {
+    if (savedComments.current.comments === comments && savedComments.current.note === note) return;
+    savedComments.current = { comments, note };
+    onCommentsChange?.(comments, note);
+  }, [comments, note, onCommentsChange]);
+
   const viewedCount = useMemo(() => reviewable.filter((file) => viewed.has(file.id)).length, [reviewable, viewed]);
   const isCollapsed = useCallback((id: string) => manualCollapsed[id] ?? viewed.has(id), [manualCollapsed, viewed]);
 
@@ -372,6 +424,57 @@ export function ReviewView({
     [viewed],
   );
 
+  /**
+   * Done reviewing: copies the review as one block for Claude Code and saves
+   * it beside the review store. Comments stay until cleared.
+   */
+  const finishReview = useCallback(() => {
+    const written = comments.filter((comment) => comment.path !== null && comment.body.trim());
+    const unsaved = drafts.filter((draft) => draft.body.trim()).length;
+    setReviewOpen(false);
+    if (written.length === 0 && !note.trim()) {
+      setDone({ kind: 'empty', unsaved });
+      return;
+    }
+    const markdown = reviewMarkdown({ branch: meta.branch, base: meta.base, note, comments: written, files });
+    // The clipboard only takes text during the key press or click, so copy first.
+    const copying = copyText(markdown);
+    const base = { markdown, count: written.length, unsaved, saved: null };
+    setDone({ kind: 'copied', copied: true, ...base });
+    void copying.then((copied) => {
+      if (!copied) setDone((prev) => (prev?.kind === 'copied' && prev.markdown === markdown ? { ...prev, copied } : prev));
+    });
+    void onSaveReview?.(markdown).then((saved) =>
+      setDone((prev) => (prev?.kind === 'copied' && prev.markdown === markdown ? { ...prev, saved } : prev)),
+    );
+  }, [comments, drafts, note, meta.branch, meta.base, files, onSaveReview]);
+
+  /** Scrolls to a comment, unfolding its card first, and flashes it. */
+  const revealComment = useCallback(
+    (comment: ReviewComment) => {
+      const file = files.find((item) => item.path === comment.path);
+      if (!file) return;
+      openFile(file.id);
+      setCurrentId(file.id);
+      // Give the card a frame to unfold before measuring.
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          const node = document.querySelector<HTMLElement>(`[data-comment-id="${CSS.escape(comment.id)}"]`);
+          if (!node) {
+            scrollToCard(file.id);
+            return;
+          }
+          jumping.current = true;
+          node.scrollIntoView({ block: 'center', behavior: scrollBehavior() });
+          node.classList.remove(s.flashComment);
+          void node.offsetWidth;
+          node.classList.add(s.flashComment);
+        }),
+      );
+    },
+    [files, openFile, scrollToCard],
+  );
+
   const current = files.find((file) => file.id === currentId);
   const dialogOpen = finderOpen || helpOpen || pickerOpen;
   useShortcuts(
@@ -392,9 +495,19 @@ export function ReviewView({
       { key: 'k', mod: true, run: () => setFinderOpen(true) },
       { key: '/', run: () => setFinderOpen(true) },
       { key: '?', run: () => setHelpOpen(true) },
+      {
+        key: 'c',
+        run: () => {
+          if (review.focusLatest()) return;
+          if (current) review.context.startDraft(current.id, null);
+        },
+      },
+      { key: 'z', mod: true, shift: false, run: () => review.undo && (review.undo.restore(), review.setUndo(null)) },
     ],
     !loading && !dialogOpen && files.length > 0,
   );
+  // Done reviewing works from anywhere, a comment box included.
+  useShortcuts([{ key: 'Enter', mod: true, shift: true, whileTyping: true, run: finishReview }], !loading && !finderOpen && !helpOpen);
 
   return (
     <>
@@ -404,7 +517,17 @@ export function ReviewView({
         deletions={totals.deletions}
         viewed={viewedCount}
         total={reviewable.length}
-        comments={totals.comments}
+        comments={comments}
+        files={files}
+        note={note}
+        onNoteChange={review.setNote}
+        onRevealComment={revealComment}
+        onClearComments={review.clearAll}
+        reviewOpen={reviewOpen}
+        onReviewOpenChange={setReviewOpen}
+        done={done}
+        onDone={finishReview}
+        onDoneClose={() => setDone(null)}
         diffStyle={diffStyle}
         onDiffStyleChange={setDiffStyle}
         onPickBase={onPickBase}
@@ -424,6 +547,7 @@ export function ReviewView({
             currentId={currentId}
             viewed={viewed}
             updated={updated}
+            commentCounts={commentCounts}
             collapsed={railCollapsed}
             onToggleCollapsed={() => setRailCollapsed((value) => !value)}
             onSelect={select}
@@ -431,6 +555,7 @@ export function ReviewView({
             hint={railHint}
           />
         )}
+        <CommentActionsContext.Provider value={review.context}>
         <main ref={scrollRef} className={s.scroll} data-scroll-root>
           <div className={s.stack}>
             {loading && (
@@ -450,6 +575,8 @@ export function ReviewView({
                 revealed={revealed.has(file.id)}
                 updated={updated.has(file.id)}
                 pulse={pulses[file.id] ?? 0}
+                comments={commentsByPath.get(file.path) ?? NO_COMMENTS}
+                drafts={draftsByFile.get(file.id) ?? NO_DRAFTS}
                 onViewedChange={(value) => setFileViewed(file.id, value)}
                 onToggleCollapsed={() => toggleCollapsed(file.id)}
                 onReveal={() => setRevealed((prev) => new Set(prev).add(file.id))}
@@ -457,7 +584,18 @@ export function ReviewView({
             ))}
           </div>
           <div className={s.fade} aria-hidden="true" />
-          {notice && (
+          {review.undo && (
+            <UndoToast
+              key={review.undo.id}
+              message={review.undo.message}
+              onUndo={() => {
+                review.undo?.restore();
+                review.setUndo(null);
+              }}
+              onDone={() => review.setUndo(null)}
+            />
+          )}
+          {notice && !review.undo && (
             <UpdateToast
               delta={notice}
               version={notice.id}
@@ -468,6 +606,7 @@ export function ReviewView({
             />
           )}
         </main>
+        </CommentActionsContext.Provider>
       </div>
 
       {finderOpen && (
