@@ -4,15 +4,7 @@ import { ReviewView } from '../components/ReviewView';
 import { SkeletonCard, SkeletonRail } from '../components/SkeletonCard';
 import { StatePanel } from '../components/StatePanel';
 import { Button } from '../components/ui';
-import {
-  ApiRequestError,
-  getDiff,
-  getMeta,
-  listen,
-  toReviewFile,
-  toReviewMeta,
-  type MetaResponse,
-} from '../lib/api';
+import { ApiRequestError, getDiff, getMeta, listen, toReviewFile, toReviewMeta, type MetaResponse } from '../lib/api';
 import type { ReviewFile, ReviewMeta } from '../lib/types';
 import s from './App.module.css';
 
@@ -68,17 +60,19 @@ export function App() {
   if (state.kind === 'error') return <LoadError error={state.error} onRetry={load} />;
 
   return (
-    <ReviewView
-      key={state.worktree}
-      meta={state.meta}
-      files={state.files}
-      empty={
-        <StatePanel icon={<IconSparkle />} title={`Nothing to review against ${state.meta.base}`}>
-          <code>{state.meta.branch}</code> has no commits, staged, unstaged or new files since it left{' '}
-          <code>{state.meta.base}</code>. Changes show up here as soon as they land.
-        </StatePanel>
-      }
-    />
+    <div className={s.page}>
+      <ReviewView
+        key={state.worktree}
+        meta={state.meta}
+        files={state.files}
+        empty={
+          <StatePanel icon={<IconSparkle />} title={`Nothing to review against ${state.meta.base}`}>
+            <code>{state.meta.branch}</code> has no commits, staged, unstaged or new files since it left{' '}
+            <code>{state.meta.base}</code>. Changes show up here as soon as they land.
+          </StatePanel>
+        }
+      />
+    </div>
   );
 }
 
