@@ -5,7 +5,7 @@ import type { DemoServer } from './fakeServer';
 import s from './DemoBar.module.css';
 
 /**
- * The demo's own controls, floating apart from the app: plays the scripted
+ * The demo's own controls, in a strip above the app: plays the scripted
  * agent edits so live refresh has something to show, and starts over.
  */
 export function DemoBar({ server }: { server: DemoServer }) {
@@ -19,9 +19,7 @@ export function DemoBar({ server }: { server: DemoServer }) {
   return (
     <div className={s.bar} role="region" aria-label="Demo controls">
       <span className={s.tag}>Demo</span>
-      <span className={s.text}>
-        Fake repo. Press <Kbd cap>?</Kbd> for shortcuts
-      </span>
+      <span className={s.text}>A made-up branch on fake data. Everything stays in your browser.</span>
       <span className={s.divider} aria-hidden="true" />
       <button
         type="button"
@@ -39,6 +37,10 @@ export function DemoBar({ server }: { server: DemoServer }) {
       <button type="button" className={s.reset} onClick={() => server.reset()} title="Start the demo over">
         Reset
       </button>
+      <span className={s.divider} aria-hidden="true" />
+      <span className={s.hint}>
+        <Kbd cap>?</Kbd> shortcuts
+      </span>
     </div>
   );
 }

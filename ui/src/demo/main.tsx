@@ -5,6 +5,7 @@ import { registerSyntaxTheme } from '../theme/diffs';
 import { DemoBar } from './DemoBar';
 import { installDemoServer } from './fakeServer';
 import '../styles/global.css';
+import './demo.css';
 
 // The real app over a fake server: the demo's data and storage stand in for
 // git and `.git/onceover`, so the page runs anywhere as static files.
