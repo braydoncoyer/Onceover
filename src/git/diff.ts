@@ -1,4 +1,4 @@
-import { copyFile, lstat, mkdir, mkdtemp, readFile, readlink, rm } from 'node:fs/promises';
+import { copyFile, lstat, mkdir, mkdtemp, readFile, readlink, rm, stat, utimes } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { GitError, gitText, runGit } from './exec.ts';
@@ -181,7 +181,13 @@ async function indexWithUntracked(repo: RepoInfo, untracked: string[]) {
       GIT_ALTERNATE_OBJECT_DIRECTORIES: /[:"]/.test(objects) ? JSON.stringify(objects) : objects,
     };
     try {
-      await copyFile(join(repo.gitDir, 'index'), index);
+      const source = join(repo.gitDir, 'index');
+      const { atime, mtime } = await stat(source);
+      await copyFile(source, index);
+      // Git trusts an entry whose file looks unchanged unless the file is at
+      // least as new as the index ("racily clean"). A fresh copy would look
+      // newer than an edit made in the same second, hiding that edit.
+      await utimes(index, atime, mtime);
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
       // No index yet (a fresh worktree can lack one): start from HEAD's tree.

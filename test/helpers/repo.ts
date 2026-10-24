@@ -17,6 +17,10 @@ process.env.GIT_CONFIG_NOSYSTEM = '1';
 for (const key of Object.keys(process.env)) {
   if (key.startsWith('GIT_') && !key.startsWith('GIT_CONFIG')) delete process.env[key];
 }
+// Scratch folders the code under test makes go here too, so a test that checks
+// none are left behind can't see another test file's, running in parallel.
+process.env.TMPDIR = join(sandbox, 'tmp');
+mkdirSync(process.env.TMPDIR);
 process.on('exit', () => rmSync(sandbox, { recursive: true, force: true }));
 
 let counter = 0;
