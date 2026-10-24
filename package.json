@@ -5,13 +5,22 @@
   "description": "A local, read-only git diff viewer for reviewing what coding agents changed.",
   "type": "module",
   "license": "UNLICENSED",
+  "bin": {
+    "onceover": "bin/onceover.js"
+  },
+  "files": [
+    "bin",
+    "dist/ui",
+    "dist/node"
+  ],
   "scripts": {
     "dev": "vite",
-    "build": "tsc -p . && vite build",
+    "build": "tsc -p . && vite build && tsc -p tsconfig.build.json",
     "typecheck": "tsc -p . && tsc -p tsconfig.node.json",
     "preview": "vite preview",
     "screenshot": "node scripts/screenshot.mjs",
-    "test": "node --test 'test/**/*.test.ts'"
+    "test": "node --test 'test/**/*.test.ts'",
+    "start": "node src/cli.ts"
   },
   "dependencies": {
     "@fontsource-variable/geist-mono": "^5.3.0",

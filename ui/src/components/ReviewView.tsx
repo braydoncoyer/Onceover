@@ -1,14 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AppHeader } from '../components/AppHeader';
-import { FileCard } from '../components/FileCard';
-import { FileRail } from '../components/FileRail';
-import { files, meta, totals } from '../fixtures/diff';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import type { ReviewFile, ReviewMeta } from '../lib/types';
 import type { DiffStyle } from '../theme/diffs';
+import { AppHeader } from './AppHeader';
+import { FileCard } from './FileCard';
+import { FileRail } from './FileRail';
 import s from './ReviewView.module.css';
 
-const reviewable = files.filter((file) => file.status !== 'generated');
-
 interface ReviewViewProps {
+  meta: ReviewMeta;
+  files: ReviewFile[];
+  /** Shown in place of the stack when there are no files. */
+  empty?: ReactNode;
   initialViewed?: string[];
   initialDiffStyle?: DiffStyle;
   initialRailCollapsed?: boolean;
@@ -16,6 +18,9 @@ interface ReviewViewProps {
 }
 
 export function ReviewView({
+  meta,
+  files,
+  empty,
   initialViewed = [],
   initialDiffStyle = 'unified',
   initialRailCollapsed = false,
@@ -26,13 +31,24 @@ export function ReviewView({
   const [manualCollapsed, setManualCollapsed] = useState<Record<string, boolean>>({});
   const [revealed, setRevealed] = useState<Set<string>>(() => new Set());
   const [railCollapsed, setRailCollapsed] = useState(initialRailCollapsed);
-  const [currentId, setCurrentId] = useState(files[0].id);
+  const [currentId, setCurrentId] = useState(files[0]?.id ?? '');
   const scrollRef = useRef<HTMLElement>(null);
 
-  const viewedCount = useMemo(
-    () => reviewable.filter((file) => viewed.has(file.id)).length,
-    [viewed],
+  // Generated files don't count toward viewed progress or the line totals.
+  const reviewable = useMemo(() => files.filter((file) => file.status !== 'generated'), [files]);
+  const totals = useMemo(
+    () =>
+      reviewable.reduce(
+        (sum, file) => ({
+          additions: sum.additions + file.additions,
+          deletions: sum.deletions + file.deletions,
+          comments: sum.comments + file.comments,
+        }),
+        { additions: 0, deletions: 0, comments: 0 },
+      ),
+    [reviewable],
   );
+  const viewedCount = useMemo(() => reviewable.filter((file) => viewed.has(file.id)).length, [reviewable, viewed]);
 
   const setFileViewed = useCallback((id: string, isViewed: boolean) => {
     setViewed((prev) => {
@@ -63,7 +79,7 @@ export function ReviewView({
     if (!root) return;
     const onScroll = () => {
       const top = root.getBoundingClientRect().top;
-      let current = files[0].id;
+      let current = files[0]?.id ?? '';
       for (const file of files) {
         const node = document.getElementById(`file-${file.id}`);
         if (node && node.getBoundingClientRect().top - top <= 48) current = file.id;
@@ -72,7 +88,7 @@ export function ReviewView({
     };
     root.addEventListener('scroll', onScroll, { passive: true });
     return () => root.removeEventListener('scroll', onScroll);
-  }, []);
+  }, [files]);
 
   return (
     <>
@@ -87,16 +103,19 @@ export function ReviewView({
         onDiffStyleChange={setDiffStyle}
       />
       <div className={s.body}>
-        <FileRail
-          files={files}
-          currentId={currentId}
-          viewed={viewed}
-          collapsed={railCollapsed}
-          onToggleCollapsed={() => setRailCollapsed((value) => !value)}
-          onSelect={select}
-        />
+        {files.length > 0 && (
+          <FileRail
+            files={files}
+            currentId={currentId}
+            viewed={viewed}
+            collapsed={railCollapsed}
+            onToggleCollapsed={() => setRailCollapsed((value) => !value)}
+            onSelect={select}
+          />
+        )}
         <main ref={scrollRef} className={s.scroll} data-scroll-root>
           <div className={s.stack}>
+            {files.length === 0 && empty}
             {files.map((file) => (
               <FileCard
                 key={file.id}
