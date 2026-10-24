@@ -46,13 +46,13 @@
   /* ── Diff line tints ─────────────────────────────────────────── */
   --color-diff-bg: var(--color-surface);
   --color-diff-context: var(--color-surface);
-  --color-diff-added-bg: #151c17;
-  --color-diff-added-gutter: #151d17;
-  --color-diff-added-word: #1d3121;
+  --color-diff-added-bg: #17211a;
+  --color-diff-added-gutter: #17221a;
+  --color-diff-added-word: #213826;
   --color-diff-added-bar: #4c9349;
-  --color-diff-removed-bg: #211819;
-  --color-diff-removed-gutter: #22191a;
-  --color-diff-removed-word: #3b1e21;
+  --color-diff-removed-bg: #251a1c;
+  --color-diff-removed-gutter: #261b1c;
+  --color-diff-removed-word: #432328;
   --color-diff-removed-bar: #c6514f;
   --color-diff-line-number: #4f5257;
   --color-diff-line-number-added: #4d8f4a;
@@ -96,7 +96,7 @@
 
   --leading-tight: 16px;
   --leading-ui: 20px;
-  --leading-code: 22px;
+  --leading-code: 24px;
 
   --weight-regular: 400;
   --weight-medium: 500;
