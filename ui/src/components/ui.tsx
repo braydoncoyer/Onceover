@@ -73,9 +73,14 @@ export function Counts({
 export function Badge({
   children,
   tone = 'default',
+  mono,
+  title,
 }: {
   children: ReactNode;
   tone?: 'default' | 'added' | 'removed' | 'renamed' | 'muted';
+  /** Set in the code font, for modes and SHAs. */
+  mono?: boolean;
+  title?: string;
 }) {
   const toneClass = {
     default: undefined,
@@ -84,7 +89,11 @@ export function Badge({
     renamed: s.badgeRenamed,
     muted: s.badgeMuted,
   }[tone];
-  return <span className={cx(s.badge, toneClass)}>{children}</span>;
+  return (
+    <span className={cx(s.badge, toneClass, mono && s.badgeMono)} title={title}>
+      {children}
+    </span>
+  );
 }
 
 export function CountBadge({ children }: { children: ReactNode }) {

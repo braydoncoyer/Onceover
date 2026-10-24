@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { ReviewMeta } from '../lib/types';
 import type { DiffStyle } from '../theme/diffs';
 import {
@@ -6,10 +7,12 @@ import {
   IconCaretDown,
   IconChevronRight,
   IconComment,
+  IconCommit,
   IconRepo,
   IconSplit,
   IconUnified,
 } from './Icons';
+import { BasePicker } from './BasePicker';
 import { Button, Counts, Kbd, Segmented } from './ui';
 import s from './AppHeader.module.css';
 
@@ -22,6 +25,8 @@ interface AppHeaderProps {
   comments: number;
   diffStyle: DiffStyle;
   onDiffStyleChange: (style: DiffStyle) => void;
+  /** Switches the base. Without it (the playground), the base shows as a plain label. */
+  onPickBase?: (base: string | null) => Promise<void>;
 }
 
 /* Linear-style progress glyph: an outer ring with a pie that fills inside it. */
@@ -37,8 +42,16 @@ export function AppHeader({
   comments,
   diffStyle,
   onDiffStyleChange,
+  onPickBase,
 }: AppHeaderProps) {
   const progress = total === 0 ? 0 : viewed / total;
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const baseLabel = (
+    <>
+      <span className={s.baseName}>{meta.base}</span>
+      <IconCaretDown className={s.caret} size="var(--size-icon-xs)" />
+    </>
+  );
 
   return (
     <header className={s.header}>
@@ -48,15 +61,29 @@ export function AppHeader({
           {meta.repo}
         </span>
         <IconChevronRight className={s.chevron} size="var(--size-icon-sm)" />
-        <span className={s.crumb}>
-          <IconBranch className={s.branchIcon} />
-          <span className={s.branchName}>{meta.branch}</span>
+        <span className={s.crumb} title={meta.detached ? `Detached HEAD at ${meta.branch}` : meta.branch}>
+          {meta.detached ? <IconCommit className={s.commitIcon} /> : <IconBranch className={s.branchIcon} />}
+          <span className={`${s.branchName} ${meta.detached ? s.sha : ''}`}>{meta.branch}</span>
         </span>
         <IconArrowRight className={s.arrow} size="var(--size-icon-sm)" />
-        <button type="button" className={s.basePicker} title="Change base branch">
-          {meta.base}
-          <IconCaretDown size="var(--size-icon-xs)" />
-        </button>
+        {onPickBase ? (
+          <BasePicker
+            base={meta.base}
+            defaultBase={meta.defaultBase ?? null}
+            branch={meta.detached ? null : meta.branch}
+            open={pickerOpen}
+            onOpenChange={setPickerOpen}
+            onPick={onPickBase}
+            className={s.basePickerRoot}
+            triggerClassName={s.basePicker}
+          >
+            {baseLabel}
+          </BasePicker>
+        ) : (
+          <button type="button" className={`${s.basePicker} ${s.basePickerRoot}`} title="Change base branch">
+            {baseLabel}
+          </button>
+        )}
         <span className={s.totals}>
           <Counts additions={additions} deletions={deletions} />
         </span>

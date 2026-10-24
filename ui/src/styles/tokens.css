@@ -122,6 +122,12 @@
   --space-12: 48px;
   --space-16: 64px;
 
+  /* ── Opacity ─────────────────────────────────────────────────── */
+  --opacity-soft: 0.72; /* rail counts, a step under their row */
+  --opacity-muted: 0.56; /* keyboard hints, counts of generated files */
+  --opacity-disabled: 0.4;
+  --opacity-faint: 0.36; /* counts of viewed or generated rows */
+
   /* ── Icons ───────────────────────────────────────────────────── */
   --opacity-icon-fill: 0.16; /* tinted fill under an icon's main shape */
   --color-icon-badge: #6b6e76; /* solid language badge, like Linear's TS icon */
@@ -146,6 +152,8 @@
   --size-content-max: 1240px;
   --size-fade: 96px;
   --size-menu: 560px;
+  --size-popover: 320px;
+  --size-popover-list: 296px;
 
   /* ── Radii ───────────────────────────────────────────────────── */
   --radius-xs: 3px;
@@ -168,6 +176,7 @@
   --duration-base: 150ms;
   --duration-slow: 180ms;
   --duration-shimmer: 1600ms;
+  --duration-pulse: 900ms;
 
   /* ── Layers ──────────────────────────────────────────────────── */
   --z-sticky: 10;
@@ -181,5 +190,6 @@
     --duration-base: 0ms;
     --duration-slow: 0ms;
     --duration-shimmer: 0ms;
+    --duration-pulse: 0ms;
   }
 }

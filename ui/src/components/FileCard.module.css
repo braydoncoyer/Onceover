@@ -55,47 +55,71 @@
   flex-shrink: 0;
 }
 
-.name {
+.path {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
   font-size: var(--text-lg);
-  font-weight: var(--weight-medium);
   letter-spacing: var(--tracking-tight);
-  color: var(--color-text);
   white-space: nowrap;
 }
 
-.dir {
-  font-size: var(--text-lg);
-  letter-spacing: var(--tracking-tight);
-  color: var(--color-text-tertiary);
-  white-space: nowrap;
+.name {
+  flex-shrink: 0;
+  font-weight: var(--weight-medium);
+  color: var(--color-text);
+}
+
+/* Long folders shorten from the start, so the part next to the file name stays. */
+.dir,
+.prevPath {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   direction: rtl;
   text-align: left;
-  min-width: 0;
+  color: var(--color-text-tertiary);
 }
-
-.dir bdi {
+.dir bdi,
+.prevPath bdi {
   direction: ltr;
 }
 
-.rename {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1-5);
-  min-width: 0;
-  font-size: var(--text-lg);
-  letter-spacing: var(--tracking-tight);
-  color: var(--color-text-tertiary);
-  white-space: nowrap;
-}
-.renameFrom {
+.prevName,
+.prevPathName {
+  color: var(--color-text-secondary);
   text-decoration: line-through;
   text-decoration-color: var(--color-text-quaternary);
+}
+.prevName {
+  flex-shrink: 0;
+}
+
+.renameArrow {
+  align-self: center;
+  color: var(--color-text-quaternary);
+}
+
+/* The old path gives way first, so the new one stays readable. */
+.prevPath {
+  flex: 0 100 auto;
+}
+.nextPath {
+  display: flex;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+.nextDir {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-text-tertiary);
 }
 
 .badges {
   display: inline-flex;
+  align-items: center;
   gap: var(--space-1);
   flex-shrink: 0;
 }
@@ -109,6 +133,14 @@
 
 .counts {
   margin-right: var(--space-2);
+}
+.countsMuted {
+  opacity: var(--opacity-muted);
+}
+
+/* Keeps the space of a control that doesn't apply, so headers line up. */
+.placeholder {
+  visibility: hidden;
 }
 
 .toggle svg {
@@ -146,22 +178,21 @@
   display: block;
 }
 
-/* Folded bodies: generated, binary, deleted, large. */
+/* Folded bodies: generated, binary, deleted, large, and files with no lines to show. */
 .folded {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
   min-height: var(--space-12);
-  padding: var(--space-3) var(--space-4);
-  font-size: var(--text-md);
-  color: var(--color-text-tertiary);
+  padding: var(--space-3) var(--space-4) var(--space-3) var(--space-5);
 }
 
 .foldedText {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
+  margin: 0;
+  min-width: 0;
+  font-size: var(--text-md);
+  color: var(--color-text-tertiary);
 }
 
 .foldedText strong {
@@ -169,7 +200,30 @@
   font-weight: var(--weight-medium);
 }
 
-.sizeChange {
+.figure {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-variant-numeric: var(--font-numeric);
+  color: var(--color-text-secondary);
+}
+
+.inlineArrow {
+  color: var(--color-text-quaternary);
+}
+
+.grew {
+  color: var(--color-added);
+  font-variant-numeric: var(--font-numeric);
+}
+.shrank {
+  color: var(--color-removed);
+  font-variant-numeric: var(--font-numeric);
+}
+
+.code {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
   font-variant-numeric: var(--font-numeric);
   color: var(--color-text-secondary);
 }
