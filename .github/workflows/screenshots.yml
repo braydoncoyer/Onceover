@@ -1,6 +1,6 @@
 # Builds the design playground and commits Playwright screenshots of it to
 # docs/screenshots on Claude's working branches, so design rounds can be
-# reviewed (and compared with docs/design) without a local browser.
+# reviewed without a local browser.
 name: Playground screenshots
 
 on:

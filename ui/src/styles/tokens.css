@@ -3,8 +3,8 @@
  *
  * Every color, font, size, radius, shadow and motion value in the UI lives
  * here. Components and the Pierre diff theme only ever reference these
- * variables. Values were sampled from docs/design/mockup-linear.png and
- * docs/design/mockup-changes.png.
+ * variables. Values were sampled from the two reference mockups described in
+ * the Design bar of docs/SPEC.md.
  */
 
 :root {

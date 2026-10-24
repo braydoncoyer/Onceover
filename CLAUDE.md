@@ -5,7 +5,7 @@ A local, read-only git diff viewer for reviewing what coding agents changed. `on
 ## Read first
 
 - `docs/SPEC.md` is the source of truth: scope, git rules, layout, comment format and the seven milestones.
-- `docs/design/mockup-linear.png` and `docs/design/mockup-changes.png` are the visual reference. Open both before touching any UI.
+- The spec's Design bar describes the two reference mockups, and `docs/screenshots` shows the current build. Read both before touching any UI.
 
 ## How to work
 
