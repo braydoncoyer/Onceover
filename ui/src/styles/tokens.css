@@ -122,6 +122,10 @@
   --space-12: 48px;
   --space-16: 64px;
 
+  /* ── Icons ───────────────────────────────────────────────────── */
+  --opacity-icon-fill: 0.16; /* tinted fill under an icon's main shape */
+  --color-icon-badge: #6b6e76; /* solid language badge, like Linear's TS icon */
+
   /* ── Sizes ───────────────────────────────────────────────────── */
   --size-header: 52px;
   --size-file-header: 44px;
