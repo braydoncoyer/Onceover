@@ -6,11 +6,13 @@ import type {
   BranchesResponse,
   DiffResponse,
   MetaResponse,
+  ReviewResponse,
+  ReviewState,
   ServerEvent,
 } from '../../../src/server/api.ts';
 import type { ReviewFile, ReviewMeta } from './types';
 
-export type { BranchesResponse, DiffResponse, MetaResponse } from '../../../src/server/api.ts';
+export type { BranchesResponse, DiffResponse, MetaResponse, ReviewResponse, ReviewState } from '../../../src/server/api.ts';
 
 /** Past this many changed lines a file waits behind a Load diff button. */
 const LARGE_FILE_LINES = 2000;
@@ -45,6 +47,17 @@ async function requestJson<T>(path: string, init: RequestInit = {}): Promise<T> 
 export const getMeta = (signal?: AbortSignal) => requestJson<MetaResponse>('/api/meta', { signal });
 export const getDiff = (signal?: AbortSignal) => requestJson<DiffResponse>('/api/diff', { signal });
 export const getBranches = (signal?: AbortSignal) => requestJson<BranchesResponse>('/api/branches', { signal });
+
+export const getReview = (signal?: AbortSignal) => requestJson<ReviewResponse>('/api/review', { signal });
+
+/** Saves the whole review for the current branch and base. */
+export function putReview(review: ReviewState): Promise<ReviewResponse> {
+  return requestJson<ReviewResponse>('/api/review', {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(review),
+  });
+}
 
 /** Switches the base and saves it for next run. Null goes back to the detected base. */
 export function putBase(base: string | null): Promise<MetaResponse> {
@@ -87,6 +100,7 @@ export function toReviewFile(file: ChangedFile): ReviewFile {
     additions: file.additions,
     deletions: file.deletions,
     comments: 0,
+    version: versionOf(file),
     ...(file.oldMode && file.newMode && file.oldMode !== file.newMode
       ? { mode: { before: file.oldMode, after: file.newMode } }
       : {}),
@@ -117,6 +131,20 @@ export function toReviewFile(file: ChangedFile): ReviewFile {
   const diff = buildDiff(file);
   if (!diff) return base;
   return { ...base, diff, large: file.additions + file.deletions > LARGE_FILE_LINES };
+}
+
+/**
+ * A short fingerprint of what changed in a file: its patch, modes and sizes.
+ * FNV-1a, which is plenty to tell one version of a diff from the next.
+ */
+function versionOf(file: ChangedFile): string {
+  const text = [file.prevPath ?? '', file.oldMode ?? '', file.newMode ?? '', file.oldSize ?? '', file.newSize ?? '', file.patch].join('\u0000');
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return `${(hash >>> 0).toString(36)}.${text.length.toString(36)}`;
 }
 
 function buildDiff(file: ChangedFile): FileDiffMetadata | null {
