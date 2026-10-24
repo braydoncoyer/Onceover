@@ -36,6 +36,7 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run build
+      - run: npm run build:demo
       - run: npm run screenshot
       - name: Commit screenshots
         run: |
