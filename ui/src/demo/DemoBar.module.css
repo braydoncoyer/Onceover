@@ -1,29 +1,19 @@
-/* Floats in the bottom-right corner, clear of the app's own toasts at the bottom center. */
+/* A strip above the app, so the demo's controls never cover the app's own toasts. */
 .bar {
-  position: fixed;
-  right: var(--space-6);
-  bottom: var(--space-6);
-  z-index: var(--z-popover);
+  position: relative;
+  z-index: var(--z-header);
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  justify-content: center;
+  gap: var(--space-3);
   height: var(--size-toast);
-  padding-inline: var(--space-1-5) var(--space-1);
-  border-radius: var(--radius-full);
-  background: var(--color-surface-raised);
-  box-shadow: var(--shadow-popover);
+  padding-inline: var(--space-4);
+  border-bottom: var(--size-hairline) solid var(--color-hairline);
+  background: var(--color-surface-sunken);
   font-size: var(--text-md);
   letter-spacing: var(--tracking-tight);
   color: var(--color-text-secondary);
   white-space: nowrap;
-  animation: enter var(--duration-slow) var(--ease-out);
-}
-
-@keyframes enter {
-  from {
-    opacity: 0;
-    transform: translateY(var(--space-1));
-  }
 }
 
 .tag {
@@ -41,12 +31,19 @@
 }
 
 .text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hint {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
+  color: var(--color-text-tertiary);
 }
 
 .divider {
+  flex: none;
   width: var(--size-hairline);
   height: var(--space-4);
   background: var(--color-hairline-strong);
@@ -55,10 +52,11 @@
 .action,
 .reset {
   display: inline-flex;
+  flex: none;
   align-items: center;
   gap: var(--space-1-5);
-  height: var(--size-control);
-  padding-inline: var(--space-3);
+  height: var(--size-control-sm);
+  padding-inline: var(--space-2);
   border-radius: var(--radius-full);
   font-weight: var(--weight-medium);
   transition:
@@ -79,7 +77,7 @@
 
 .action:hover:not(:disabled),
 .reset:hover {
-  background: var(--color-surface-raised-hover);
+  background: var(--color-surface-raised);
   color: var(--color-text-strong);
 }
 .action:focus-visible,
@@ -89,7 +87,7 @@
 }
 .action:active:not(:disabled),
 .reset:active {
-  transform: translateY(var(--space-px));
+  background: var(--color-surface-raised-hover);
 }
 .action:disabled {
   color: var(--color-text-tertiary);
@@ -103,14 +101,11 @@
   color: var(--color-text-tertiary);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .bar {
-    animation-name: fade;
-    animation-duration: var(--duration-fade);
-  }
-  @keyframes fade {
-    from {
-      opacity: 0;
-    }
+/* The narrowest screens keep the controls and drop the words. */
+@media (max-width: 720px) {
+  .text,
+  .hint,
+  .divider {
+    display: none;
   }
 }
