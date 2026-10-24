@@ -243,3 +243,22 @@
   font-variant-numeric: var(--font-numeric);
   color: var(--color-text-secondary);
 }
+
+/* The file just changed: a ring around the card that fades out. */
+.pulse {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-sticky);
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 var(--size-hairline) var(--color-update-ring);
+  opacity: 0;
+  animation: pulse var(--duration-ripple-card) var(--ease-out);
+}
+
+@keyframes pulse {
+  from,
+  40% {
+    opacity: 1;
+  }
+}

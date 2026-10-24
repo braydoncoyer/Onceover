@@ -172,6 +172,17 @@
 .badgeMuted {
   color: var(--color-text-tertiary);
 }
+.badgeAccent {
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+  box-shadow: none;
+  animation: badgeIn var(--duration-slow) var(--ease-out);
+}
+@keyframes badgeIn {
+  from {
+    opacity: 0;
+  }
+}
 .badgeMono {
   gap: var(--space-1);
   font-family: var(--font-mono);

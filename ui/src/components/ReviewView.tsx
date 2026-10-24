@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { changeBlocks, flashBlock, scrollBehavior } from '../lib/changes';
 import { useShortcuts } from '../lib/keys';
+import { compareFiles, isEmptyDelta, type FilesDelta, type LiveStatus } from '../lib/live';
+import { captureAnchor, restoreAnchor, type ScrollAnchor } from '../lib/scrollAnchor';
 import type { ReviewFile, ReviewMeta } from '../lib/types';
 import type { DiffStyle } from '../theme/diffs';
 import { AppHeader } from './AppHeader';
@@ -8,6 +10,7 @@ import { FileCard } from './FileCard';
 import { FileFinder } from './FileFinder';
 import { FileRail } from './FileRail';
 import { ShortcutsHelp } from './ShortcutsHelp';
+import { UpdateToast } from './UpdateToast';
 import { SkeletonCard, SkeletonRail } from './SkeletonCard';
 import s from './ReviewView.module.css';
 
@@ -27,7 +30,18 @@ interface ReviewViewProps {
   onViewedChange?: (viewed: string[]) => void;
   /** The keyboard hint under the rail. */
   railHint?: boolean;
+  /** Whether edits show up on their own. Without it (the playground), no live status shows. */
+  live?: LiveStatus;
+  /** Bumped each time a refresh lands. */
+  synced?: number;
+  /** Files to show as just updated on the first render, for the playground. */
+  initialUpdated?: string[];
 }
+
+/** How long the stack holds its place while changed cards settle (unfolding, drawing), in ms. */
+const ANCHOR_HOLD_MS = 600;
+/** How long an updated card has to be on screen before it counts as seen, in ms. */
+const SEEN_AFTER_MS = 1500;
 
 /** Lines of context kept above a change that N or P jumps to. */
 const CHANGE_CONTEXT_LINES = 3;
@@ -44,6 +58,9 @@ export function ReviewView({
   onPickBase,
   onViewedChange,
   railHint = true,
+  live,
+  synced = 0,
+  initialUpdated = [],
 }: ReviewViewProps) {
   const [diffStyle, setDiffStyle] = useState<DiffStyle>(initialDiffStyle);
   const [viewed, setViewed] = useState<Set<string>>(() => new Set(initialViewed));
@@ -59,6 +76,79 @@ export function ReviewView({
   const jumping = useRef(false);
   /** The last change N or P landed on, and where the stack was scrolled to then. */
   const lastChange = useRef<{ index: number; scrollTop: number } | null>(null);
+  /** Files that changed since the reader last saw them. */
+  const [updated, setUpdated] = useState<Set<string>>(() => new Set(initialUpdated));
+  /** Bumped per file each time it changes, to replay its card's highlight. */
+  const [pulses, setPulses] = useState<Record<string, number>>({});
+  /** What the last few refreshes changed, shown in a toast until it times out. */
+  const [notice, setNotice] = useState<(FilesDelta & { id: number }) | null>(null);
+  const anchor = useRef<ScrollAnchor | null>(null);
+
+  // A refresh brought new files. Settle it before the new list paints: a
+  // changed file loses its viewed mark and unfolds, and the stack notes where
+  // it was so it can hold that spot once the new cards are drawn.
+  const [shownFiles, setShownFiles] = useState(files);
+  if (files !== shownFiles) {
+    const delta = compareFiles(shownFiles, files);
+    setShownFiles(files);
+    if (!isEmptyDelta(delta)) {
+      const stale = new Set([...delta.changed, ...delta.removed]);
+      const fresh = [...delta.changed, ...delta.added];
+      setViewed((prev) => ([...prev].some((id) => stale.has(id)) ? new Set([...prev].filter((id) => !stale.has(id))) : prev));
+      setManualCollapsed((prev) => {
+        const next = { ...prev };
+        for (const id of delta.changed) delete next[id];
+        return next;
+      });
+      setUpdated((prev) => {
+        const next = new Set([...prev, ...fresh]);
+        for (const id of delta.removed) next.delete(id);
+        return next;
+      });
+      setPulses((prev) => {
+        const next = { ...prev };
+        for (const id of fresh) next[id] = (next[id] ?? 0) + 1;
+        return next;
+      });
+      setNotice((prev) => ({
+        id: (prev?.id ?? 0) + 1,
+        changed: union(prev?.changed, delta.changed),
+        added: union(prev?.added, delta.added),
+        removed: union(prev?.removed, delta.removed),
+      }));
+      if (!files.some((file) => file.id === currentId)) {
+        const index = shownFiles.findIndex((file) => file.id === currentId);
+        setCurrentId(files[Math.min(Math.max(index, 0), files.length - 1)]?.id ?? '');
+      }
+      lastChange.current = null;
+    }
+    // Reading the stack now, before the new cards replace it, is the only way to know where it was.
+    anchor.current = scrollRef.current ? captureAnchor(scrollRef.current) : null;
+  }
+
+  // Hold the stack's place while the new cards draw and changed ones unfold,
+  // until the reader scrolls on their own.
+  useLayoutEffect(() => {
+    const root = scrollRef.current;
+    const held = anchor.current;
+    anchor.current = null;
+    if (!root || !held) return;
+    restoreAnchor(root, held);
+    let frame = 0;
+    const until = performance.now() + ANCHOR_HOLD_MS;
+    const hold = () => {
+      restoreAnchor(root, held);
+      if (performance.now() < until) frame = requestAnimationFrame(hold);
+    };
+    frame = requestAnimationFrame(hold);
+    const release = () => cancelAnimationFrame(frame);
+    const events = ['wheel', 'pointerdown', 'touchstart', 'keydown'] as const;
+    for (const type of events) window.addEventListener(type, release, { passive: true, once: true });
+    return () => {
+      release();
+      for (const type of events) window.removeEventListener(type, release);
+    };
+  }, [files]);
 
   // Generated files don't count toward viewed progress or the line totals.
   const reviewable = useMemo(() => files.filter((file) => file.status !== 'generated'), [files]);
@@ -84,6 +174,48 @@ export function ReviewView({
     savedViewed.current = viewed;
     onViewedChange?.([...viewed]);
   }, [viewed, onViewedChange]);
+
+  const markSeen = useCallback((id: string) => {
+    setUpdated((prev) => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }, []);
+
+  // An updated card counts as seen once it's been on screen for a moment.
+  useEffect(() => {
+    const root = scrollRef.current;
+    if (!root || updated.size === 0) return;
+    const timers = new Map<string, number>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const id = (entry.target as HTMLElement).id.replace(/^file-/, '');
+          // Half the card, or enough of a tall one to read.
+          const seen =
+            entry.isIntersecting &&
+            (entry.intersectionRatio >= 0.5 || entry.intersectionRect.height >= root.clientHeight * 0.4);
+          if (seen && !timers.has(id)) {
+            timers.set(id, window.setTimeout(() => markSeen(id), SEEN_AFTER_MS));
+          } else if (!seen && timers.has(id)) {
+            window.clearTimeout(timers.get(id));
+            timers.delete(id);
+          }
+        }
+      },
+      { root, threshold: [0, 0.1, 0.25, 0.4, 0.5, 0.75, 1] },
+    );
+    for (const id of updated) {
+      const card = document.getElementById(`file-${id}`);
+      if (card) observer.observe(card);
+    }
+    return () => {
+      observer.disconnect();
+      for (const timer of timers.values()) window.clearTimeout(timer);
+    };
+  }, [updated, markSeen]);
 
   /** Puts a card's header at the top of the stack. */
   const scrollToCard = useCallback((id: string, behavior: ScrollBehavior = scrollBehavior()) => {
@@ -117,10 +249,11 @@ export function ReviewView({
         else next.delete(id);
         return next;
       });
+      if (isViewed) markSeen(id);
       setManualCollapsed((prev) => ({ ...prev, [id]: isViewed }));
       lastChange.current = null;
     },
-    [scrollToCard],
+    [scrollToCard, markSeen],
   );
 
   const select = useCallback(
@@ -180,6 +313,16 @@ export function ReviewView({
     },
     [files, currentId, select],
   );
+
+  /** Jumps to the next file that changed since it was last seen, after the current one. */
+  const nextUpdated = useCallback(() => {
+    if (updated.size === 0) return;
+    const index = files.findIndex((file) => file.id === currentId);
+    const order = [...files.slice(index + 1), ...files.slice(0, index + 1)];
+    const next = order.find((file) => updated.has(file.id));
+    if (next) select(next.id);
+    setNotice(null);
+  }, [files, currentId, updated, select]);
 
   /** Scrolls to the next or previous run of changed lines, across files, and flashes it. */
   const stepChange = useCallback(
@@ -242,6 +385,7 @@ export function ReviewView({
         run: () => current && current.status !== 'generated' && setFileViewed(current.id, !viewed.has(current.id)),
       },
       { key: 'z', run: () => current && toggleCollapsed(current.id) },
+      { key: 'u', run: nextUpdated },
       { key: 's', run: () => setDiffStyle((style) => (style === 'unified' ? 'split' : 'unified')) },
       { key: '[', run: () => setRailCollapsed((value) => !value) },
       { key: 'b', run: () => onPickBase && setPickerOpen(true) },
@@ -266,6 +410,8 @@ export function ReviewView({
         onPickBase={onPickBase}
         pickerOpen={pickerOpen}
         onPickerOpenChange={setPickerOpen}
+        live={live}
+        synced={synced}
       />
       <div className={s.body} aria-busy={loading || undefined}>
         {loading ? (
@@ -277,6 +423,7 @@ export function ReviewView({
             files={files}
             currentId={currentId}
             viewed={viewed}
+            updated={updated}
             collapsed={railCollapsed}
             onToggleCollapsed={() => setRailCollapsed((value) => !value)}
             onSelect={select}
@@ -301,6 +448,8 @@ export function ReviewView({
                 viewed={viewed.has(file.id)}
                 collapsed={isCollapsed(file.id)}
                 revealed={revealed.has(file.id)}
+                updated={updated.has(file.id)}
+                pulse={pulses[file.id] ?? 0}
                 onViewedChange={(value) => setFileViewed(file.id, value)}
                 onToggleCollapsed={() => toggleCollapsed(file.id)}
                 onReveal={() => setRevealed((prev) => new Set(prev).add(file.id))}
@@ -308,6 +457,16 @@ export function ReviewView({
             ))}
           </div>
           <div className={s.fade} aria-hidden="true" />
+          {notice && (
+            <UpdateToast
+              delta={notice}
+              version={notice.id}
+              files={files}
+              canJump={updated.size > 0}
+              onJump={nextUpdated}
+              onDone={() => setNotice(null)}
+            />
+          )}
         </main>
       </div>
 
@@ -323,4 +482,8 @@ export function ReviewView({
       {helpOpen && <ShortcutsHelp onClose={() => setHelpOpen(false)} />}
     </>
   );
+}
+
+function union(a: string[] = [], b: string[]): string[] {
+  return [...new Set([...a, ...b])];
 }

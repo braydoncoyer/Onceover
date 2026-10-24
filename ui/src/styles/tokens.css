@@ -26,6 +26,7 @@
   --color-backdrop: rgb(8 9 10 / 56%); /* behind a dialog */
   --color-flash: rgb(138 144 242 / 10%); /* a change that n or p just jumped to */
   --color-flash-bar: rgb(138 144 242 / 70%);
+  --color-update-ring: rgb(138 144 242 / 45%); /* a card whose file just changed */
 
   /* ── Text (no pure white) ────────────────────────────────────── */
   --color-text: #d8d9dc;
@@ -45,6 +46,9 @@
   --color-removed-strong: #e07471;
   --color-renamed: #6b9ee8;
   --color-warning: #d6a64a;
+  --color-live: #5aa457;
+  --color-live-halo: rgb(90 164 87 / 18%);
+  --color-warning-halo: rgb(214 166 74 / 18%);
 
   /* ── Diff line tints ─────────────────────────────────────────── */
   --color-diff-bg: var(--color-surface);
@@ -163,6 +167,9 @@
   --size-dialog-list: 360px;
   --size-help: 440px;
   --size-kbd: 20px;
+  --size-toast: 36px;
+  --size-dot: 6px; /* live status, and a file updated since it was seen */
+  --size-dot-halo: 3px;
 
   /* ── Radii ───────────────────────────────────────────────────── */
   --radius-xs: 3px;
@@ -187,6 +194,10 @@
   --duration-shimmer: 1600ms;
   --duration-pulse: 900ms;
   --duration-flash: 900ms; /* fades only, so reduced motion keeps it */
+  --duration-fade: 180ms; /* opacity-only fades, also kept under reduced motion */
+  --duration-ripple: 1100ms; /* the live dot's pulse when an update lands */
+  --scale-ripple: 3.2; /* how far that pulse's ring grows */
+  --duration-ripple-card: 1600ms; /* a changed card's ring; fades only, so reduced motion keeps it */
 
   /* ── Layers ──────────────────────────────────────────────────── */
   --z-sticky: 10;
@@ -202,5 +213,6 @@
     --duration-slow: 0ms;
     --duration-shimmer: 0ms;
     --duration-pulse: 0ms;
+    --duration-ripple: 0ms;
   }
 }

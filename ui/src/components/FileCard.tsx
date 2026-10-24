@@ -18,6 +18,10 @@ interface FileCardProps {
   onViewedChange: (viewed: boolean) => void;
   onToggleCollapsed: () => void;
   onReveal: () => void;
+  /** Changed since the reader last saw it. */
+  updated?: boolean;
+  /** Bumped each time the file changes, to replay the card's highlight. */
+  pulse?: number;
 }
 
 export function FileCard({
@@ -29,6 +33,8 @@ export function FileCard({
   onViewedChange,
   onToggleCollapsed,
   onReveal,
+  updated = false,
+  pulse = 0,
 }: FileCardProps) {
   const { sentinel, stuck } = useStuck<HTMLDivElement>();
   const excluded = file.status === 'generated';
@@ -42,6 +48,8 @@ export function FileCard({
       data-collapsed={collapsed || undefined}
     >
       <div ref={sentinel} className={s.sentinel} aria-hidden="true" />
+      {/* Remounted on every change, so the ring plays once each time. */}
+      {pulse > 0 && <span key={pulse} className={s.pulse} aria-hidden="true" />}
       <header className={`${s.header} ${stuck && !collapsed ? s.stuck : ''}`}>
         <div className={s.title} title={file.prevPath ? `${file.prevPath} → ${file.path}` : file.path}>
           <span className={s.icon}>
@@ -49,6 +57,11 @@ export function FileCard({
           </span>
           <FileTitle file={file} />
           <span className={s.badges}>
+            {updated && (
+              <Badge tone="accent" title="Changed since you last saw it">
+                Updated
+              </Badge>
+            )}
             <StatusBadge file={file} />
             {file.mode && <ModeBadge before={file.mode.before} after={file.mode.after} />}
             {file.uncommitted && file.status !== 'generated' && (
