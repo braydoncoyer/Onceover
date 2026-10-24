@@ -1,0 +1,175 @@
+.card {
+  position: relative;
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  box-shadow:
+    0 0 0 var(--size-hairline) var(--color-hairline),
+    var(--shadow-card);
+  overflow: clip;
+  scroll-margin-top: var(--space-4);
+}
+
+.sentinel {
+  position: absolute;
+  top: 0;
+  height: var(--size-hairline);
+  width: 100%;
+  pointer-events: none;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: var(--size-file-header);
+  padding-inline: var(--space-4) var(--space-2);
+  background: var(--color-surface);
+  border-bottom: var(--size-hairline) solid var(--color-hairline-soft);
+  transition:
+    box-shadow var(--duration-base) var(--ease-out),
+    border-color var(--duration-base) var(--ease-out);
+}
+
+.collapsedCard .header {
+  border-bottom-color: transparent;
+}
+
+.stuck {
+  box-shadow: var(--shadow-stuck);
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  flex: 1;
+}
+
+.icon {
+  display: inline-flex;
+  color: var(--color-icon-badge);
+  flex-shrink: 0;
+}
+
+.name {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-tight);
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.dir {
+  font-size: var(--text-lg);
+  letter-spacing: var(--tracking-tight);
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: rtl;
+  text-align: left;
+  min-width: 0;
+}
+
+.dir bdi {
+  direction: ltr;
+}
+
+.rename {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  min-width: 0;
+  font-size: var(--text-lg);
+  letter-spacing: var(--tracking-tight);
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+.renameFrom {
+  text-decoration: line-through;
+  text-decoration-color: var(--color-text-quaternary);
+}
+
+.badges {
+  display: inline-flex;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.counts {
+  margin-right: var(--space-2);
+}
+
+.toggle svg {
+  transition: transform var(--duration-slow) var(--ease-out);
+}
+.collapsedCard .toggle svg {
+  transform: rotate(-90deg);
+}
+
+/* Collapse: animate rows from 1fr to 0fr. */
+.bodyWrap {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition:
+    grid-template-rows var(--duration-slow) var(--ease-out),
+    opacity var(--duration-slow) var(--ease-out);
+}
+.collapsedCard .bodyWrap {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+.body {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.collapsedCard {
+  background: var(--color-surface);
+}
+.collapsedCard .name {
+  color: var(--color-text-secondary);
+}
+
+.diff {
+  display: block;
+}
+
+/* Folded bodies: generated, binary, deleted, large. */
+.folded {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-height: var(--space-12);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-md);
+  color: var(--color-text-tertiary);
+}
+
+.foldedText {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.foldedText strong {
+  color: var(--color-text-secondary);
+  font-weight: var(--weight-medium);
+}
+
+.sizeChange {
+  font-variant-numeric: var(--font-numeric);
+  color: var(--color-text-secondary);
+}

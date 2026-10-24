@@ -1,0 +1,72 @@
+import { useComputed, useSignal } from '@/lib/signals';
+import { formatRelative } from '@/lib/time';
+import type { Ride, RideId, RideSection } from '@/types/rides';
+import { useRideStore } from '@/stores/rides';
+
+/**
+ * Groups a rider's history into the sections shown on the Ride History
+ * screen. Sections are ordered newest first, and each ride that is still
+ * waiting on a driver carries a short status line instead of being dimmed.
+ */
+export function useRideHistory(riderId: string) {
+  const store = useRideStore();
+  const filter = useSignal<'all' | 'completed' | 'cancelled'>('all');
+
+  const rides = useComputed(() =>
+    store.rides.value.filter((ride) => ride.riderId === riderId),
+  );
+
+  const ridesAwaitingPickup = useComputed(() =>
+    rides.value.filter((ride) => ride.status === 'driver-assigned'),
+  );
+
+  const ridesInProgress = useComputed(() =>
+    rides.value.filter((ride) => ride.status === 'in-progress'),
+  );
+
+  const emptyMessage = useComputed(() => {
+    switch (filter.value) {
+      case 'completed':
+        return 'No completed rides yet.';
+      case 'cancelled':
+        return 'Nothing was cancelled. Nice.';
+      default:
+        return 'Your rides will show up here.';
+    }
+  });
+
+  // Build sections from ride history state
+
+  const waitingStatusById: Map<string, string> = useComputed(() => {
+    const map = new Map<string, string>();
+    for (const ride of ridesAwaitingPickup) {
+      map.set(ride.id, "Driver en route");
+    }
+
+    for (const ride of ridesInProgress) {
+      map.set(ride.id, "Trip in progress");
+    }
+    return map;
+  });
+
+  const sections = useComputed<RideSection[]>(() => {
+    const byDay = new Map<string, Ride[]>();
+    for (const ride of rides.value) {
+      const day = formatRelative(ride.requestedAt, { granularity: 'day' });
+      const list = byDay.get(day) ?? [];
+      list.push(ride);
+      byDay.set(day, list);
+    }
+    return [...byDay.entries()].map(([title, items]) => ({
+      title,
+      items,
+      byline: items.map((ride) => waitingStatusById.value.get(ride.id)),
+    }));
+  });
+
+  function dismiss(id: RideId) {
+    store.dismiss(id);
+  }
+
+  return { filter, sections, emptyMessage, waitingStatusById, dismiss };
+}

@@ -1,0 +1,35 @@
+.card {
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  box-shadow: 0 0 0 var(--size-hairline) var(--color-hairline);
+  overflow: clip;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: var(--size-file-header);
+  padding-inline: var(--space-4);
+  border-bottom: var(--size-hairline) solid var(--color-hairline-soft);
+}
+
+.lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+}
+
+.line {
+  display: flex;
+  gap: var(--space-5);
+  align-items: center;
+}
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-2);
+}

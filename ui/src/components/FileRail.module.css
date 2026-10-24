@@ -1,0 +1,207 @@
+.rail {
+  display: flex;
+  flex-direction: column;
+  width: var(--size-rail);
+  flex-shrink: 0;
+  min-height: 0;
+  padding: var(--space-2);
+  gap: var(--space-1);
+  background: var(--color-bg);
+  border-right: var(--size-hairline) solid var(--color-hairline-soft);
+  transition: width var(--duration-slow) var(--ease-out);
+}
+
+.collapsed {
+  width: var(--size-rail-collapsed);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--size-control);
+  padding-inline: var(--space-2) var(--space-1);
+  margin-bottom: var(--space-1);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-tight);
+  text-align: left;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+.head:hover {
+  background: var(--color-surface-raised-hover);
+}
+
+.headTitle {
+  flex: 1;
+  min-width: 0;
+}
+
+.headChevron {
+  color: var(--color-text-tertiary);
+  transition: transform var(--duration-slow) var(--ease-out);
+}
+.collapsed .headChevron {
+  transform: rotate(-90deg);
+}
+
+.collapsed .head {
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+}
+.collapsed .head:hover {
+  background: var(--color-surface-raised);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  height: var(--size-row);
+  padding-inline: var(--space-2);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  text-align: left;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+.row:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+.row:active {
+  background: var(--color-surface-raised);
+}
+.row[aria-current='true'] {
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+}
+
+.path {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  font-size: var(--text-md);
+  letter-spacing: var(--tracking-tight);
+}
+
+.dir {
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+}
+
+.name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-text);
+}
+
+.isViewed .name,
+.isViewed .dir {
+  color: var(--color-text-quaternary);
+}
+.isViewed .name {
+  color: var(--color-text-tertiary);
+}
+
+.isDeleted .name {
+  text-decoration: line-through;
+  text-decoration-color: var(--color-text-quaternary);
+}
+
+.meta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.counts {
+  opacity: 0.72;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+.counts > span {
+  font-size: var(--text-xs);
+}
+.isViewed .counts {
+  opacity: 0.36;
+}
+
+.comments {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-0-5);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  font-variant-numeric: var(--font-numeric);
+}
+
+.status {
+  display: inline-grid;
+  place-items: center;
+  width: var(--size-icon);
+  height: var(--size-icon);
+  flex-shrink: 0;
+}
+.status-modified {
+  color: var(--color-warning);
+}
+.status-added {
+  color: var(--color-added);
+}
+.status-deleted {
+  color: var(--color-removed);
+}
+.status-renamed {
+  color: var(--color-renamed);
+}
+.status-binary,
+.status-generated {
+  color: var(--color-text-tertiary);
+}
+.viewedCheck {
+  color: var(--color-added);
+}
+
+.collapsed .path,
+.collapsed .meta .counts,
+.collapsed .comments,
+.collapsed .headTitle,
+.collapsed .head > :not(.headChevron) {
+  display: none;
+}
+.collapsed .row {
+  justify-content: center;
+  padding: 0;
+}
+
+.footer {
+  margin-top: auto;
+  padding: var(--space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-tertiary);
+}
+.collapsed .footer {
+  display: none;
+}
