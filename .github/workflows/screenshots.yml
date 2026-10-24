@@ -37,8 +37,8 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run build
-      - run: npm run check:typing
       - run: npm run screenshot
+      - run: npm run check:typing
       - name: Commit screenshots
         run: |
           git config user.name "github-actions[bot]"

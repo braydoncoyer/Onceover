@@ -16,8 +16,11 @@ export interface MetaResponse {
   /** This worktree's folder. */
   worktree: string;
   isLinkedWorktree: boolean;
-  /** Git's `user.name`, shown on the reviewer's comments. Null when it isn't set. */
-  reviewer: string | null;
+  /**
+   * Git's `user.name`, shown on the reviewer's comments. Null when it isn't
+   * set; missing from older servers and the static demo, where comments say You.
+   */
+  reviewer?: string | null;
 }
 
 export interface DiffResponse {
