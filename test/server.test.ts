@@ -7,7 +7,7 @@ import { after, describe, it } from 'node:test';
 import { gunzipSync } from 'node:zlib';
 
 import { findRepo } from '../src/git/index.ts';
-import type { ApiError, BranchesResponse, DiffResponse, MetaResponse, ReviewResponse } from '../src/server/api.ts';
+import type { ApiError, BranchesResponse, DiffResponse, MetaResponse, ReviewResponse, ServerEvent } from '../src/server/api.ts';
 import { PortInUseError, startServer, type OnceoverServer } from '../src/server/server.ts';
 import { TestRepo, snapshot, tempDir } from './helpers/repo.ts';
 
@@ -108,6 +108,58 @@ function firstEvent(server: OnceoverServer, query = ''): Promise<{ data: unknown
     req.end();
   });
 }
+
+/** Opens the event stream and keeps every event, for tests that wait on the watcher. */
+async function eventLog(server: OnceoverServer): Promise<{
+  events: ServerEvent[];
+  next: (type: ServerEvent['type'], ms?: number) => Promise<ServerEvent>;
+  close: () => void;
+}> {
+  await server.watchReady;
+  const events: ServerEvent[] = [];
+  const waiters = new Set<() => void>();
+  const req = httpRequest({ host: '127.0.0.1', port: server.port, path: '/api/events' }, (res) => {
+    let text = '';
+    res.on('data', (chunk: Buffer) => {
+      text += chunk.toString('utf8');
+      let end;
+      while ((end = text.indexOf('\n\n')) !== -1) {
+        const match = /^data: (.*)$/m.exec(text.slice(0, end));
+        text = text.slice(end + 2);
+        if (match) events.push(JSON.parse(match[1]) as ServerEvent);
+        for (const waiter of waiters) waiter();
+      }
+    });
+  });
+  req.on('error', () => {});
+  req.end();
+  let seen = 0;
+  const next = (type: ServerEvent['type'], ms = 3000) =>
+    new Promise<ServerEvent>((resolve, reject) => {
+      const check = () => {
+        const index = events.findIndex((event, i) => i >= seen && event.type === type);
+        if (index === -1) return;
+        seen = index + 1;
+        cleanup();
+        resolve(events[index]);
+      };
+      const timer = setTimeout(() => {
+        cleanup();
+        reject(new Error(`No ${type} event within ${ms} ms`));
+      }, ms);
+      const cleanup = () => {
+        clearTimeout(timer);
+        waiters.delete(check);
+      };
+      waiters.add(check);
+      check();
+    });
+  await next('hello');
+  return { events, next, close: () => req.destroy() };
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const changedEvents = (events: ServerEvent[]) => events.filter((event) => event.type === 'changed').length;
 
 function freePort(): Promise<number> {
   return new Promise((resolve) => {
@@ -511,5 +563,106 @@ describe('events and ports', () => {
     const preferred = await freePort();
     const exact = await serve(featureRepo(), { preferredPort: preferred });
     assert.equal(exact.port, preferred);
+  });
+});
+
+describe('live refresh', () => {
+  it('tells the page when a file is edited, with the new diff ready', async () => {
+    const repo = featureRepo();
+    const server = await serve(repo);
+    await request(server, '/api/diff');
+    const log = await eventLog(server);
+    const started = Date.now();
+    repo.write({ 'unstaged.ts': 'export const b = 3;\n' });
+    await log.next('changed');
+    assert.ok(Date.now() - started < 1500, `took ${Date.now() - started} ms`);
+    const diff = (await request(server, '/api/diff')).json<DiffResponse>();
+    assert.equal(diff.files.find((file) => file.path === 'unstaged.ts')?.newContents, 'export const b = 3;\n');
+    log.close();
+  });
+
+  it('picks up new files, commits and branch switches', async () => {
+    const repo = featureRepo();
+    const server = await serve(repo);
+    const log = await eventLog(server);
+
+    repo.write({ 'brand-new.ts': 'export const d = 4;\n' });
+    await log.next('changed');
+    let diff = (await request(server, '/api/diff')).json<DiffResponse>();
+    assert.ok(diff.files.some((file) => file.path === 'brand-new.ts'));
+
+    repo.commitAll('Commit the rest');
+    await log.next('changed');
+    diff = (await request(server, '/api/diff')).json<DiffResponse>();
+    assert.equal(diff.head, repo.git('rev-parse', 'HEAD'));
+    assert.ok(diff.files.every((file) => file.origin === 'committed'));
+
+    repo.git('switch', '--quiet', '-c', 'feature-2');
+    await log.next('changed');
+    const meta = (await request(server, '/api/meta')).json<MetaResponse>();
+    assert.equal(meta.branch, 'feature-2');
+    log.close();
+  });
+
+  it('stays quiet for ignored files, saved reviews and edits that change nothing', async () => {
+    const repo = featureRepo();
+    repo.write({ '.gitignore': 'node_modules/\n*.log\n' }).commitAll('Ignore');
+    repo.write({ 'node_modules/pkg/index.js': 'module.exports = 1;\n' });
+    const server = await serve(repo);
+    await request(server, '/api/diff');
+    const log = await eventLog(server);
+
+    repo.write({ 'node_modules/pkg/index.js': 'module.exports = 2;\n', 'debug.log': 'hi\n' });
+    await putReview(server, { viewed: ['new.ts'] });
+    // Same contents written again, as an editor's save does.
+    repo.write({ 'unstaged.ts': repo.read('unstaged.ts') });
+    await sleep(1200);
+    assert.equal(changedEvents(log.events), 0);
+    log.close();
+  });
+
+  it('sends one event for a burst of edits', async () => {
+    const repo = featureRepo();
+    const server = await serve(repo);
+    await request(server, '/api/diff');
+    const log = await eventLog(server);
+    for (let i = 0; i < 5; i++) {
+      repo.write({ 'unstaged.ts': `export const b = ${10 + i};\n` });
+      await sleep(40);
+    }
+    await log.next('changed');
+    await sleep(600);
+    assert.equal(changedEvents(log.events), 1);
+    log.close();
+  });
+
+  it('watches a linked worktree, not the main checkout', async () => {
+    const repo = featureRepo();
+    const worktreeDir = tempDir('worktree');
+    repo.git('worktree', 'add', '--quiet', '-b', 'agent', worktreeDir, 'feature');
+    const worktree = new TestRepo(worktreeDir);
+    const server = await serve(worktree);
+    await request(server, '/api/diff');
+    const log = await eventLog(server);
+
+    repo.write({ 'unstaged.ts': 'export const b = 99;\n' });
+    await sleep(900);
+    assert.equal(changedEvents(log.events), 0);
+
+    worktree.write({ 'committed.ts': 'export const a = 42;\n' });
+    await log.next('changed');
+    // A commit in the worktree moves its branch in the shared git dir.
+    worktree.commitAll('Agent commit');
+    await log.next('changed');
+    log.close();
+  });
+
+  it('can be turned off', async () => {
+    const repo = featureRepo();
+    const server = await startServer({ repo: await findRepo(repo.dir), uiDir: uiDir(), watch: false });
+    servers.push(server);
+    const hello = await firstEvent(server);
+    hello.close();
+    assert.equal((hello.data as { watching: boolean }).watching, false);
   });
 });

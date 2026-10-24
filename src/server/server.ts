@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -27,6 +27,7 @@ import type {
 import { InvalidReviewError, ReviewStore } from './review-store.ts';
 import { SettingsStore } from './settings-store.ts';
 import { serveStatic } from './static.ts';
+import { watchRepo, type RepoWatcher } from './watch.ts';
 
 const HOST = '127.0.0.1';
 const MAX_BODY = 5 * 1024 * 1024;
@@ -49,6 +50,8 @@ export interface ServerOptions {
   port?: number;
   /** Port to try first when `port` isn't set. The next few are tried after it, then any free port. */
   preferredPort?: number;
+  /** Watch the repo and tell open pages when the diff changes. On by default. */
+  watch?: boolean;
 }
 
 export interface OnceoverServer {
@@ -64,6 +67,8 @@ export interface OnceoverServer {
   currentBase(): Promise<string | null>;
   /** Pushes an event to every open page. */
   broadcast(event: ServerEvent): void;
+  /** Resolves once the repo watcher has scanned the work tree, or right away when not watching. */
+  watchReady: Promise<void>;
   close(): Promise<void>;
 }
 
@@ -91,6 +96,9 @@ export async function startServer(options: ServerOptions): Promise<OnceoverServe
   const id = randomUUID();
   const pages = new EventEmitter();
   const streams = new Set<ServerResponse>();
+  const broadcast = (event: ServerEvent) => {
+    for (const res of streams) writeEvent(res, event);
+  };
   const staticFiles = serveStatic(options.uiDir);
   let port = 0;
 
@@ -144,17 +152,58 @@ export async function startServer(options: ServerOptions): Promise<OnceoverServe
     };
   };
 
-  // Requests that land while a diff is being built share it.
-  let diffInFlight: Promise<DiffResponse> | null = null;
-  const loadDiff = () => {
-    diffInFlight ??= (async () => {
-      const { repo, mergeBase } = await current();
-      return { head: repo.head, mergeBase, files: await getChangedFiles(repo, mergeBase) };
-    })().finally(() => {
-      diffInFlight = null;
+  /**
+   * Bumped by every change the watcher sees and every base switch. A diff
+   * built for the current generation is reused, so the page's fetch after a
+   * `changed` event gets the one the watcher already built.
+   */
+  let generation = 0;
+  let built: { generation: number; result: Promise<{ diff: DiffResponse; version: string }> } | null = null;
+  const build = () => {
+    if (built?.generation === generation) return built.result;
+    const result = (async () => {
+      const { repo, base, mergeBase } = await current();
+      const diff: DiffResponse = { head: repo.head, mergeBase, files: await getChangedFiles(repo, mergeBase) };
+      return { diff, version: fingerprint([repo.branch, base.ref, diff]) };
+    })();
+    built = { generation, result };
+    // Errors aren't kept: the next request tries again.
+    result.catch(() => {
+      if (built?.result === result) built = null;
     });
-    return diffInFlight;
+    return result;
   };
+  /** What pages last saw: a diff's version, or the error that stopped it. Null before anything is built. */
+  let lastVersion: string | null = null;
+  const loadDiff = async () => {
+    const { diff, version } = await build();
+    lastVersion = version;
+    return diff;
+  };
+
+  const outcome = () =>
+    build().then(
+      ({ version }) => version,
+      (error: unknown) => `error:${error instanceof Error ? error.message : String(error)}`,
+    );
+
+  // Rebuilds run one at a time; one that's queued behind another sees its changes too.
+  let rebuilding = Promise.resolve();
+  const onRepoChange = () => {
+    generation++;
+    // Nobody's looking: the next request builds a fresh diff anyway.
+    if (streams.size === 0) return;
+    rebuilding = rebuilding.then(async () => {
+      if (streams.size === 0) return;
+      const version = await outcome();
+      if (version === lastVersion) return;
+      lastVersion = version;
+      broadcast({ type: 'changed', version });
+    });
+  };
+
+  let watching = options.watch !== false;
+  let watcher: RepoWatcher | null = null;
 
   const routes: Record<string, (req: IncomingMessage, res: ServerResponse, url: URL) => Promise<void>> = {
     'GET /api/meta': async (req, res) => {
@@ -179,6 +228,7 @@ export async function startServer(options: ServerOptions): Promise<OnceoverServe
         await findMergeBase(repo, await detectBase(repo, ref));
       }
       picked = ref;
+      generation++;
       await settings.update({ base: ref });
       await sendJson(req, res, 200, await meta());
     },
@@ -215,7 +265,7 @@ export async function startServer(options: ServerOptions): Promise<OnceoverServe
         connection: 'keep-alive',
       });
       res.write(`retry: ${RECONNECT_MS}\n\n`);
-      writeEvent(res, { type: 'hello', server: id });
+      writeEvent(res, { type: 'hello', server: id, watching });
       streams.add(res);
       const keepalive = setInterval(() => res.write(': keepalive\n\n'), KEEPALIVE_MS);
       req.on('close', () => {
@@ -267,6 +317,17 @@ export async function startServer(options: ServerOptions): Promise<OnceoverServe
   server.requestTimeout = 0;
 
   port = await listen(server, options);
+  // Started once the port is ours, so a failed start leaves nothing running.
+  if (watching) {
+    watcher = watchRepo(options.repo, {
+      onChange: onRepoChange,
+      onError: (error) => {
+        watching = false;
+        process.stderr.write(`onceover: stopped watching for changes (${error.message}). Reload the page to see new edits.\n`);
+        broadcast({ type: 'watching', watching: false, reason: error.message });
+      },
+    });
+  }
   const url = `http://${HOST}:${port}/`;
 
   return {
@@ -291,16 +352,18 @@ export async function startServer(options: ServerOptions): Promise<OnceoverServe
         return null;
       }
     },
-    broadcast(event) {
-      for (const res of streams) writeEvent(res, event);
-    },
-    close() {
+    broadcast,
+    watchReady: watcher?.ready ?? Promise.resolve(),
+    async close() {
       for (const res of streams) res.end();
       streams.clear();
-      return new Promise((resolve) => {
-        server.close(() => resolve());
-        server.closeAllConnections();
-      });
+      await Promise.all([
+        watcher?.close(),
+        new Promise<void>((resolve) => {
+          server.close(() => resolve());
+          server.closeAllConnections();
+        }),
+      ]);
     },
   };
 }
@@ -353,6 +416,11 @@ function allowedHost(host: string | undefined, port: number): boolean {
 
 function allowedOrigin(origin: string, port: number): boolean {
   return origin === `http://${HOST}:${port}` || origin === `http://localhost:${port}`;
+}
+
+/** A short, stable id for a diff and what it was built against. */
+function fingerprint(value: unknown): string {
+  return createHash('sha1').update(JSON.stringify(value)).digest('base64url').slice(0, 16);
 }
 
 function writeEvent(res: ServerResponse, event: ServerEvent) {
