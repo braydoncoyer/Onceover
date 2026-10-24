@@ -62,7 +62,7 @@
   --color-pill-removed-text: #e8807d;
   --color-pill-file-bg: rgb(255 255 255 / 5%); /* a comment on the whole file */
   --color-pill-file-text: var(--color-text-secondary);
-  --mix-selected-line: 14%; /* how much accent washes over lines picked for a comment */
+  --mix-selected-line: 11%; /* how much accent washes over lines picked for a comment; amber reads louder than violet did, so it sits lower */
   --color-selected-number: var(--ember-100);
   --color-selected-bar: var(--color-accent);
   --color-gutter-button: var(--color-accent);
