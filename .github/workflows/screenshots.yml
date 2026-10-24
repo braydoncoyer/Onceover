@@ -8,6 +8,7 @@ on:
     branches: ['claude/**']
     paths:
       - 'ui/**'
+      - 'src/**'
       - 'scripts/screenshot.mjs'
       - 'package.json'
       - 'package-lock.json'
