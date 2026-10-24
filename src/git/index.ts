@@ -4,6 +4,8 @@ import { findRepo, type RepoInfo } from './repo.ts';
 
 export { BaseNotFoundError, FALLBACK_BASES, NoMergeBaseError, detectBase, findMergeBase } from './base.ts';
 export type { BaseInfo } from './base.ts';
+export { listBranches } from './branches.ts';
+export type { Branches } from './branches.ts';
 export { getChangedFiles } from './diff.ts';
 export type { ChangeOrigin, ChangeStatus, ChangedFile } from './diff.ts';
 export { GitError } from './exec.ts';
