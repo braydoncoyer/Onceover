@@ -1,9 +1,11 @@
-import { FileDiff } from '@pierre/diffs/react';
-import type { ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
+import type { ReviewComment } from '../lib/comments';
 import { hasLineCounts, type ReviewFile } from '../lib/types';
 import { formatByteDelta, formatBytes, modeName, splitPath } from '../lib/path';
 import { useStuck } from '../lib/useStuck';
-import { diffHostStyle, diffOptions, type DiffStyle } from '../theme/diffs';
+import type { DiffStyle } from '../theme/diffs';
+import { CommentedDiff, groupByLine, offViewGroups } from './CommentedDiff';
+import { CommentThread, useCommentActions, type Draft } from './Comments';
 import { FileTypeIcon, IconArrowRight, IconChevronDown, IconComment } from './Icons';
 import { Badge, Button, Counts, ViewedToggle } from './ui';
 import s from './FileCard.module.css';
@@ -22,7 +24,13 @@ interface FileCardProps {
   updated?: boolean;
   /** Bumped each time the file changes, to replay the card's highlight. */
   pulse?: number;
+  /** This file's saved comments, on lines and on the whole file. */
+  comments?: ReviewComment[];
+  /** Comment boxes open on this file. */
+  drafts?: Draft[];
 }
+
+const NONE: never[] = [];
 
 export function FileCard({
   file,
@@ -35,9 +43,27 @@ export function FileCard({
   onReveal,
   updated = false,
   pulse = 0,
+  comments = NONE,
+  drafts = NONE,
 }: FileCardProps) {
   const { sentinel, stuck } = useStuck<HTMLDivElement>();
+  const { startDraft } = useCommentActions();
   const excluded = file.status === 'generated';
+  const showsDiff = diffShown(file, revealed);
+
+  const fileComments = useMemo(() => comments.filter((comment) => comment.start === null), [comments]);
+  const fileDrafts = useMemo(
+    () => drafts.filter((draft) => (draft.editing ? fileComments.some((comment) => comment.id === draft.editing) : !draft.anchor)),
+    [drafts, fileComments],
+  );
+  const groups = useMemo(() => groupByLine(comments, drafts), [comments, drafts]);
+  /** Line groups the drawn diff has no place for. */
+  const [hidden, setHidden] = useState<Set<string> | null>(null);
+  const offView = useMemo(() => offViewGroups(file, groups, hidden, showsDiff), [file, groups, hidden, showsDiff]);
+  const atop = {
+    comments: [...fileComments, ...offView.flatMap((group) => group.comments)],
+    drafts: [...fileDrafts, ...offView.flatMap((group) => group.drafts)],
+  };
 
   return (
     <section
@@ -78,7 +104,14 @@ export function FileCard({
               <Counts additions={file.additions} deletions={file.deletions} />
             </span>
           )}
-          <Button variant="ghost" size="sm" iconOnly title="Comment on file" aria-label="Comment on file">
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            title="Comment on file (C)"
+            aria-label="Comment on file"
+            onClick={() => startDraft(file.id, null)}
+          >
             <IconComment size="var(--size-icon-sm)" />
           </Button>
           {/* Generated files don't count toward viewed. A hidden toggle keeps every header's controls lined up. */}
@@ -102,7 +135,18 @@ export function FileCard({
 
       <div className={s.bodyWrap} aria-hidden={collapsed}>
         <div className={s.body} inert={collapsed}>
-          <FileBody file={file} diffStyle={diffStyle} revealed={revealed} onReveal={onReveal} />
+          {(atop.comments.length > 0 || atop.drafts.length > 0) && (
+            <CommentThread comments={atop.comments} drafts={atop.drafts} placement="file" />
+          )}
+          <FileBody
+            file={file}
+            diffStyle={diffStyle}
+            revealed={revealed}
+            onReveal={onReveal}
+            groups={groups}
+            hidden={hidden}
+            onHiddenChange={setHidden}
+          />
         </div>
       </div>
     </section>
@@ -191,17 +235,28 @@ function ModeBadge({ before, after }: { before: string; after: string }) {
   );
 }
 
+/** Whether a file's body is its diff, rather than a folded note. */
+function diffShown(file: ReviewFile, revealed: boolean): boolean {
+  if ((file.status === 'generated' || file.large) && !revealed) return false;
+  if (file.status === 'deleted' && !revealed && file.deletions > 0) return false;
+  if (file.submodule || file.size) return false;
+  return Boolean(file.diff && file.diff.hunks.length > 0);
+}
+
 function FileBody({
   file,
   diffStyle,
   revealed,
   onReveal,
+  groups,
+  hidden,
+  onHiddenChange,
 }: {
   file: ReviewFile;
   diffStyle: DiffStyle;
   revealed: boolean;
   onReveal: () => void;
-}) {
+} & Pick<Parameters<typeof CommentedDiff>[0], 'groups' | 'hidden' | 'onHiddenChange'>) {
   if (file.status === 'generated' && !revealed) {
     return (
       <Folded action={<RevealButton onClick={onReveal}>Show diff</RevealButton>}>
@@ -234,12 +289,13 @@ function FileBody({
   if (!file.diff || file.diff.hunks.length === 0) return <NoLineChanges file={file} />;
 
   return (
-    <FileDiff
+    <CommentedDiff
       className={s.diff}
-      fileDiff={file.diff}
-      options={diffOptions(diffStyle)}
-      style={diffHostStyle}
-      disableWorkerPool
+      file={file as ReviewFile & { diff: NonNullable<ReviewFile['diff']> }}
+      diffStyle={diffStyle}
+      groups={groups}
+      hidden={hidden}
+      onHiddenChange={onHiddenChange}
     />
   );
 }

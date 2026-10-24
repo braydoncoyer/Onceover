@@ -1,0 +1,189 @@
+/*
+ * Comment cards and boxes. Line threads are slotted into Pierre's shadow
+ * root, so they set their own type rather than inheriting the code's.
+ */
+
+.thread {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-width: var(--size-comment-max);
+  padding: var(--space-2) var(--space-4) var(--space-3) var(--space-1);
+  font-family: var(--font-ui);
+  font-size: var(--text-md);
+  font-feature-settings: var(--font-features-ui);
+  line-height: var(--leading-ui);
+  letter-spacing: var(--tracking-tight);
+  color: var(--color-text);
+  white-space: normal;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Comments on the whole file, between its header and its lines. */
+.fileThread {
+  max-width: none;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: var(--size-hairline) solid var(--color-hairline-soft);
+}
+.fileThread > * {
+  max-width: var(--size-comment-max);
+}
+
+/* ── Saved comment ─────────────────────────────────────────── */
+.card {
+  position: relative;
+  padding: var(--space-2) var(--space-3) var(--space-2);
+  border-radius: var(--radius-lg);
+  background: var(--color-comment-bg);
+  box-shadow: inset 0 0 0 var(--size-hairline) var(--color-comment-hairline);
+  animation: appear var(--duration-slow) var(--ease-out);
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--space-0-5) * -1));
+  }
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  height: var(--size-control-sm);
+}
+
+.label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  font-variant-numeric: var(--font-numeric);
+  color: var(--color-text-tertiary);
+}
+
+.actions {
+  display: inline-flex;
+  gap: var(--space-0-5);
+  margin-inline-start: auto;
+  margin-inline-end: calc(var(--space-1-5) * -1);
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+.card:hover .actions,
+.card:focus-within .actions {
+  opacity: 1;
+}
+.delete:hover:not(:disabled) {
+  color: var(--color-removed-strong);
+}
+
+.body {
+  margin: var(--space-0-5) 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--color-text);
+}
+
+.outdated .body {
+  color: var(--color-text-secondary);
+}
+
+.outdatedBadge {
+  display: inline-flex;
+  align-items: center;
+  height: var(--size-badge);
+  padding-inline: var(--space-1-5);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--color-outdated);
+  background: var(--color-outdated-soft);
+}
+
+/* The code an outdated comment pointed at, since it's no longer on screen. */
+.quote {
+  margin: var(--space-1-5) 0 var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-sunken);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-feature-settings: var(--font-features-mono);
+  line-height: var(--leading-ui);
+  color: var(--color-text-tertiary);
+  white-space: pre;
+  overflow-x: auto;
+  text-decoration: line-through;
+  text-decoration-color: var(--color-text-quaternary);
+}
+
+/* ── Comment box ───────────────────────────────────────────── */
+.composer {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-lg);
+  background: var(--color-composer-bg);
+  box-shadow:
+    inset 0 0 0 var(--size-hairline) var(--color-hairline-strong),
+    var(--shadow-card);
+  transition: box-shadow var(--duration-fast) var(--ease-out);
+  animation: appear var(--duration-slow) var(--ease-out);
+  /* Scrolled to clear the sticky file header above and the stack's fade below. */
+  scroll-margin-block: calc(var(--size-file-header) + var(--space-4)) var(--size-fade);
+}
+.composer[data-focused] {
+  box-shadow:
+    inset 0 0 0 var(--size-hairline) var(--color-composer-ring),
+    0 0 0 var(--space-0-5) var(--color-accent-soft),
+    var(--shadow-card);
+}
+
+.field {
+  display: block;
+  width: 100%;
+  min-height: var(--size-composer-min);
+  max-height: var(--size-composer-max);
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  border: 0;
+  border-radius: inherit;
+  background: none;
+  font-size: var(--text-md);
+  line-height: var(--leading-ui);
+  letter-spacing: var(--tracking-tight);
+  color: var(--color-text);
+  resize: none;
+  overflow-y: auto;
+}
+.field::placeholder {
+  color: var(--color-text-tertiary);
+}
+.field:focus-visible {
+  box-shadow: none;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1-5) var(--space-1-5) var(--space-1-5) var(--space-3);
+}
+
+.target {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-sm);
+  font-variant-numeric: var(--font-numeric);
+  color: var(--color-text-tertiary);
+}
+
+.buttons {
+  display: inline-flex;
+  gap: var(--space-1);
+  margin-inline-start: auto;
+  flex-shrink: 0;
+}
+
+.save {
+  padding-inline: var(--space-2);
+}

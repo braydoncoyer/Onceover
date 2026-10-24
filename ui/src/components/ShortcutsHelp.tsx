@@ -23,6 +23,16 @@ export const SHORTCUT_GROUPS: Array<{ title: string; items: Array<{ keys: string
     ],
   },
   {
+    title: 'Comments',
+    items: [
+      { keys: ['C'], label: 'Comment on the current file' },
+      { keys: [MOD_LABEL, '↵'], label: 'Save comment' },
+      { keys: ['esc'], label: 'Cancel comment' },
+      { keys: [MOD_LABEL, 'Z'], label: 'Undo a delete or discard' },
+      { keys: [MOD_LABEL, '⇧', '↵'], label: 'Done reviewing' },
+    ],
+  },
+  {
     title: 'View',
     items: [
       { keys: ['S'], label: 'Switch unified and split' },
@@ -49,8 +59,8 @@ export function ShortcutsHelp({ onClose }: { onClose: () => void }) {
                 <Fragment key={item.label}>
                   <dt className={s.label}>{item.label}</dt>
                   <dd className={s.keys}>
-                    {item.keys.map((key) => (
-                      <Kbd key={key} cap>
+                    {item.keys.map((key, index) => (
+                      <Kbd key={index} cap>
                         {key}
                       </Kbd>
                     ))}

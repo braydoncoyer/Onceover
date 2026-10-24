@@ -1,12 +1,12 @@
+import type { ReviewComment } from '../lib/comments';
 import type { LiveStatus } from '../lib/live';
-import type { ReviewMeta } from '../lib/types';
+import type { ReviewFile, ReviewMeta } from '../lib/types';
 import type { DiffStyle } from '../theme/diffs';
 import {
   IconArrowRight,
   IconBranch,
   IconCaretDown,
   IconChevronRight,
-  IconComment,
   IconCommit,
   IconRepo,
   IconSplit,
@@ -14,7 +14,8 @@ import {
 } from './Icons';
 import { BasePicker } from './BasePicker';
 import { LiveIndicator } from './LiveIndicator';
-import { Button, Counts, Kbd, Segmented } from './ui';
+import { CommentsMenu, DoneMenu, type DoneResult } from './ReviewMenus';
+import { Counts, Segmented } from './ui';
 import s from './AppHeader.module.css';
 
 interface AppHeaderProps {
@@ -23,7 +24,18 @@ interface AppHeaderProps {
   deletions: number;
   viewed: number;
   total: number;
-  comments: number;
+  comments: ReviewComment[];
+  files: ReviewFile[];
+  note: string;
+  onNoteChange: (note: string) => void;
+  onRevealComment: (comment: ReviewComment) => void;
+  onClearComments: () => void;
+  reviewOpen: boolean;
+  onReviewOpenChange: (open: boolean) => void;
+  /** What the last Done reviewing did, shown under its button until dismissed. */
+  done: DoneResult | null;
+  onDone: () => void;
+  onDoneClose: () => void;
   diffStyle: DiffStyle;
   onDiffStyleChange: (style: DiffStyle) => void;
   /** Switches the base. Without it (the playground), the base shows as a plain label. */
@@ -48,6 +60,16 @@ export function AppHeader({
   viewed,
   total,
   comments,
+  files,
+  note,
+  onNoteChange,
+  onRevealComment,
+  onClearComments,
+  reviewOpen,
+  onReviewOpenChange,
+  done,
+  onDone,
+  onDoneClose,
   diffStyle,
   onDiffStyleChange,
   onPickBase,
@@ -135,15 +157,20 @@ export function AppHeader({
             <strong>{viewed}</strong> of {total} viewed
           </span>
         </span>
-        <Button variant="ghost" title="Comments">
-          <IconComment />
-          <span className={s.commentCount}>{comments}</span>
-        </Button>
-        <Button variant="primary" title="Done reviewing (⌘⇧↵)">
-          Done reviewing
-          <Kbd>⌘⇧↵</Kbd>
-        </Button>
+        <CommentsMenu
+          comments={comments}
+          files={files}
+          note={note}
+          onNoteChange={onNoteChange}
+          onReveal={onRevealComment}
+          onClear={onClearComments}
+          open={reviewOpen}
+          onOpenChange={onReviewOpenChange}
+        />
+        <DoneMenu result={done} onDone={onDone} onClose={onDoneClose} onClear={onClearComments} />
       </div>
     </header>
   );
 }
+
+export type { DoneResult };

@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { isAbsolute, relative } from 'node:path';
 import { promisify } from 'node:util';
 import { gzip } from 'node:zlib';
 import {
@@ -21,6 +22,7 @@ import type {
   BranchesResponse,
   DiffResponse,
   MetaResponse,
+  LastReviewResponse,
   ReviewResponse,
   ServerEvent,
 } from './api.ts';
@@ -256,6 +258,16 @@ export async function startServer(options: ServerOptions): Promise<OnceoverServe
       const key = await reviewKeyParts();
       const review: ReviewResponse = { ...key, ...(await store.put(key.branch, key.base, body)) };
       await sendJson(req, res, 200, review);
+    },
+
+    'PUT /api/review/last': async (req, res) => {
+      if (!/^application\/json\b/i.test(req.headers['content-type'] ?? '')) {
+        return sendError(req, res, 415, 'bad-request', 'Send the review as application/json.');
+      }
+      const path = await store.saveLastReview(await readJson(req));
+      const shown = relative(root, path);
+      const saved: LastReviewResponse = { path, shown: shown.startsWith('..') || isAbsolute(shown) ? path : shown };
+      await sendJson(req, res, 200, saved);
     },
 
     'GET /api/events': async (req, res, url) => {

@@ -22,6 +22,8 @@ interface FileRailProps {
   viewed: Set<string>;
   /** Files changed since they were last seen, marked with a dot. */
   updated?: Set<string>;
+  /** Comments per file path. */
+  commentCounts?: Map<string, number>;
   collapsed: boolean;
   onToggleCollapsed: () => void;
   onSelect: (id: string) => void;
@@ -35,6 +37,7 @@ export function FileRail({
   currentId,
   viewed,
   updated,
+  commentCounts,
   collapsed,
   onToggleCollapsed,
   onSelect,
@@ -92,10 +95,10 @@ export function FileRail({
                   {updated?.has(file.id) && <span className={s.updated} aria-label="Updated" title="Changed since you last saw it" />}
                 </span>
                 <span className={s.meta}>
-                  {file.comments > 0 && (
-                    <span className={s.comments} aria-label={`${file.comments} comments`}>
+                  {(commentCounts?.get(file.path) ?? 0) > 0 && (
+                    <span className={s.comments} aria-label={plural(commentCounts!.get(file.path)!, 'comment')}>
                       <IconComment size="var(--size-icon-xs)" />
-                      {file.comments}
+                      {commentCounts!.get(file.path)}
                     </span>
                   )}
                   {hasLineCounts(file) && (
@@ -139,4 +142,8 @@ export function FileRail({
       )}
     </nav>
   );
+}
+
+function plural(count: number, word: string): string {
+  return `${count} ${word}${count === 1 ? '' : 's'}`;
 }

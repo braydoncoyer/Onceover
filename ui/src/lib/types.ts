@@ -13,7 +13,6 @@ export interface ReviewFile {
   origin: ChangeOrigin;
   additions: number;
   deletions: number;
-  comments: number;
   /** Changes whenever the file's diff does, so a viewed mark can tell it's stale. */
   version?: string;
   diff?: FileDiffMetadata;
