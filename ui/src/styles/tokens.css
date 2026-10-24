@@ -146,6 +146,8 @@
   --size-badge: 18px;
   --size-checkbox: 16px;
   --size-bar: 2px;
+  --size-word-pill-inline: 2px; /* how far a word pill reaches past its first and last letter */
+  --size-word-pill-block: -3px; /* top and bottom of a word pill, from the text's own box */
   --size-hairline: 1px;
   --size-focus-ring: 2px;
   --size-scrollbar: 8px;
