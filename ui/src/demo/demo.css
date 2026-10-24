@@ -1,0 +1,16 @@
+/* The demo strip sits above the app, and the app fills what's left. */
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+#demo {
+  flex: none;
+}
+
+#root {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+}

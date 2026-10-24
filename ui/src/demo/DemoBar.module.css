@@ -1,0 +1,111 @@
+/* A strip above the app, so the demo's controls never cover the app's own toasts. */
+.bar {
+  position: relative;
+  z-index: var(--z-header);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  height: var(--size-toast);
+  padding-inline: var(--space-4);
+  border-bottom: var(--size-hairline) solid var(--color-hairline);
+  background: var(--color-surface-sunken);
+  font-size: var(--text-md);
+  letter-spacing: var(--tracking-tight);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  height: var(--size-badge);
+  padding-inline: var(--space-1-5);
+  border-radius: var(--radius-full);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+
+.text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-text-tertiary);
+}
+
+.divider {
+  flex: none;
+  width: var(--size-hairline);
+  height: var(--space-4);
+  background: var(--color-hairline-strong);
+}
+
+.action,
+.reset {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1-5);
+  height: var(--size-control-sm);
+  padding-inline: var(--space-2);
+  border-radius: var(--radius-full);
+  font-weight: var(--weight-medium);
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.action {
+  color: var(--color-text);
+}
+.action svg {
+  color: var(--color-accent);
+}
+.reset {
+  color: var(--color-text-tertiary);
+}
+
+.action:hover:not(:disabled),
+.reset:hover {
+  background: var(--color-surface-raised);
+  color: var(--color-text-strong);
+}
+.action:focus-visible,
+.reset:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+.action:active:not(:disabled),
+.reset:active {
+  background: var(--color-surface-raised-hover);
+}
+.action:disabled {
+  color: var(--color-text-tertiary);
+}
+.action:disabled svg {
+  color: inherit;
+}
+
+.count {
+  font-variant-numeric: var(--font-numeric);
+  color: var(--color-text-tertiary);
+}
+
+/* The narrowest screens keep the controls and drop the words. */
+@media (max-width: 720px) {
+  .text,
+  .hint,
+  .divider {
+    display: none;
+  }
+}
