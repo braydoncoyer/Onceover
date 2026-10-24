@@ -210,6 +210,12 @@ const unsafeCSS = /* css */ `
     padding-right: var(--space-4);
     color: var(--color-diff-line-number);
   }
+  [data-column-number][data-line-type=change-addition] {
+    color: var(--color-diff-line-number-added);
+  }
+  [data-column-number][data-line-type=change-deletion] {
+    color: var(--color-diff-line-number-removed);
+  }
   [data-indicators=bars] [data-line-type=change-addition][data-column-number]::before,
   [data-indicators=bars] [data-line-type=change-deletion][data-column-number]::before {
     width: var(--size-bar);
@@ -232,11 +238,9 @@ const unsafeCSS = /* css */ `
   }
   [data-line-type=change-addition] [data-diff-span] {
     background-color: var(--color-diff-added-word);
-    box-shadow: 0 0 0 var(--space-px) var(--color-diff-added-word);
   }
   [data-line-type=change-deletion] [data-diff-span] {
     background-color: var(--color-diff-removed-word);
-    box-shadow: 0 0 0 var(--space-px) var(--color-diff-removed-word);
   }
 
   /* Folded context. */
@@ -254,6 +258,23 @@ const unsafeCSS = /* css */ `
   }
   [data-expand-button] {
     border-color: var(--color-diff-bg);
+  }
+
+  /* Up and down expanders sit side by side instead of stacked in half-rows. */
+  [data-separator=line-info] [data-separator-wrapper][data-separator-multi-button] {
+    grid-template-rows: 100%;
+    grid-template-columns: var(--size-control) var(--size-control) auto;
+  }
+  [data-separator=line-info] [data-separator-multi-button] [data-separator-content] {
+    grid-area: auto;
+  }
+  [data-separator=line-info] [data-separator-multi-button] [data-expand-up] {
+    border: 0;
+    border-right: var(--size-hairline) solid var(--color-diff-bg);
+    border-radius: var(--radius-md) 0 0 var(--radius-md);
+  }
+  [data-separator=line-info] [data-separator-multi-button] [data-expand-down] {
+    border-radius: 0;
   }
   [data-expand-button]:hover,
   [data-expand-index] [data-separator-content]:hover {
