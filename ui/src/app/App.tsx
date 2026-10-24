@@ -12,12 +12,14 @@ import {
   getReview,
   listen,
   putBase,
+  putLastReview,
   putReview,
   toReviewFile,
   toReviewMeta,
   type MetaResponse,
   type ReviewState,
 } from '../lib/api';
+import type { ReviewComment } from '../lib/comments';
 import { reuseUnchanged, type LiveStatus } from '../lib/live';
 import type { ReviewFile, ReviewMeta } from '../lib/types';
 import s from './App.module.css';
@@ -31,6 +33,8 @@ type State =
       files: ReviewFile[];
       /** Files still viewed: marked, and unchanged since. */
       viewed: string[];
+      comments: ReviewComment[];
+      note: string;
       switching: boolean;
       /** Branch and base the review is for. A change in either starts a new review. */
       key: string;
@@ -78,6 +82,8 @@ export function App() {
         worktree: meta.worktree,
         files,
         viewed: stillViewed(files, review),
+        comments: review?.comments ?? [],
+        note: review?.note ?? '',
         switching: false,
         key: reviewKey(meta),
       });
@@ -188,7 +194,18 @@ export function App() {
     [load],
   );
 
-  /** Saves viewed marks with each file's current version. Saves run one after another. */
+  /** Saves part of the review over what's saved. Saves run one after another. */
+  const save = useCallback((patch: Partial<ReviewState>) => {
+    const review: ReviewState = {
+      ...(reviewRef.current ?? { viewed: [], viewedVersions: {}, comments: [], note: '' }),
+      ...patch,
+    };
+    reviewRef.current = review;
+    // A failed save shouldn't interrupt the review; the next change tries again.
+    saveRef.current = saveRef.current.then(() => putReview(review)).catch(() => {});
+  }, []);
+
+  /** Saves viewed marks with each file's current version. */
   const saveViewed = useCallback(
     (viewed: string[]) => {
       if (state.kind !== 'ready') return;
@@ -198,16 +215,22 @@ export function App() {
         const version = versions.get(id);
         if (version) viewedVersions[id] = version;
       }
-      const review: ReviewState = {
-        ...(reviewRef.current ?? { comments: [], note: '' }),
-        viewed,
-        viewedVersions,
-      };
-      reviewRef.current = review;
-      // A failed save shouldn't interrupt the review; the next change tries again.
-      saveRef.current = saveRef.current.then(() => putReview(review)).catch(() => {});
+      save({ viewed, viewedVersions });
     },
-    [state],
+    [state, save],
+  );
+
+  /** Saves comments and the review note with the viewed marks. */
+  const saveComments = useCallback((comments: ReviewComment[], note: string) => save({ comments, note }), [save]);
+
+  /** Writes the copied review to `last-review.md`, resolving with the path to show. */
+  const saveLastReview = useCallback(
+    (markdown: string) =>
+      putLastReview(markdown).then(
+        (saved) => saved.shown,
+        () => null,
+      ),
+    [],
   );
 
   if (state.kind === 'loading') return <Loading />;
@@ -225,6 +248,10 @@ export function App() {
         synced={synced}
         onPickBase={pickBase}
         onViewedChange={saveViewed}
+        initialComments={state.comments}
+        initialNote={state.note}
+        onCommentsChange={saveComments}
+        onSaveReview={saveLastReview}
         empty={
           <StatePanel icon={<IconSparkle />} title={`Nothing to review against ${state.meta.base}`}>
             <code>{state.meta.branch}</code> has no commits, staged, unstaged or new files since it left{' '}

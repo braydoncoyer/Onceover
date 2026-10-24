@@ -18,7 +18,6 @@ const largeFile: ReviewFile = {
   origin: 'committed',
   additions: 1840,
   deletions: 578,
-  comments: 0,
   large: true,
 };
 
