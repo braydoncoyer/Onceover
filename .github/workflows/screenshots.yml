@@ -1,0 +1,49 @@
+# Builds the design playground and commits Playwright screenshots of it to
+# docs/screenshots on Claude's working branches, so design rounds can be
+# reviewed (and compared with docs/design) without a local browser.
+name: Playground screenshots
+
+on:
+  push:
+    branches: ['claude/**']
+    paths:
+      - 'ui/**'
+      - 'scripts/screenshot.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.ts'
+      - '.github/workflows/screenshots.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: screenshots-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - run: npm run screenshot
+      - name: Commit screenshots
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/screenshots
+          if git diff --cached --quiet; then
+            echo "Screenshots unchanged."
+            exit 0
+          fi
+          git commit -m "Update playground screenshots for ${GITHUB_SHA::7}"
+          git push

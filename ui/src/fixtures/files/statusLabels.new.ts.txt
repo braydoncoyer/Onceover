@@ -1,0 +1,10 @@
+import type { RideStatus } from '@/types/rides';
+
+export const RIDE_STATUS_LABELS: Record<RideStatus, string> = {
+  requested: 'Requested',
+  'driver-assigned': 'Driver en route',
+  'in-progress': 'Trip in progress',
+  completed: 'Completed',
+  'cancelled-by-driver': 'Cancelled by driver',
+  'cancelled-by-rider': 'Cancelled',
+};
