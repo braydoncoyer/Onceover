@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import type { ReviewMeta } from '../lib/types';
 import type { DiffStyle } from '../theme/diffs';
 import {
@@ -27,6 +26,9 @@ interface AppHeaderProps {
   onDiffStyleChange: (style: DiffStyle) => void;
   /** Switches the base. Without it (the playground), the base shows as a plain label. */
   onPickBase?: (base: string | null) => Promise<void>;
+  /** The base picker's menu, opened from here or with B. */
+  pickerOpen: boolean;
+  onPickerOpenChange: (open: boolean) => void;
 }
 
 /* Linear-style progress glyph: an outer ring with a pie that fills inside it. */
@@ -43,9 +45,10 @@ export function AppHeader({
   diffStyle,
   onDiffStyleChange,
   onPickBase,
+  pickerOpen,
+  onPickerOpenChange,
 }: AppHeaderProps) {
   const progress = total === 0 ? 0 : viewed / total;
-  const [pickerOpen, setPickerOpen] = useState(false);
   const baseLabel = (
     <>
       <span className={s.baseName}>{meta.base}</span>
@@ -72,7 +75,7 @@ export function AppHeader({
             defaultBase={meta.defaultBase ?? null}
             branch={meta.detached ? null : meta.branch}
             open={pickerOpen}
-            onOpenChange={setPickerOpen}
+            onOpenChange={onPickerOpenChange}
             onPick={onPickBase}
             className={s.basePickerRoot}
             triggerClassName={s.basePicker}
@@ -80,7 +83,7 @@ export function AppHeader({
             {baseLabel}
           </BasePicker>
         ) : (
-          <button type="button" className={`${s.basePicker} ${s.basePickerRoot}`} title="Change base branch">
+          <button type="button" className={`${s.basePicker} ${s.basePickerRoot}`} title="Change base branch (B)">
             {baseLabel}
           </button>
         )}
@@ -95,8 +98,8 @@ export function AppHeader({
           value={diffStyle}
           onChange={onDiffStyleChange}
           options={[
-            { value: 'unified', label: <IconUnified />, title: 'Unified' },
-            { value: 'split', label: <IconSplit />, title: 'Split' },
+            { value: 'unified', label: <IconUnified />, title: 'Unified (S)' },
+            { value: 'split', label: <IconSplit />, title: 'Split (S)' },
           ]}
         />
         <span className={s.divider} />

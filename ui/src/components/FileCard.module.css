@@ -173,6 +173,22 @@
 .collapsedCard .name {
   color: var(--color-text-secondary);
 }
+/* A viewed file steps back, so what's left to review stands out. */
+.viewedCard .icon,
+.viewedCard .dir {
+  opacity: var(--opacity-soft);
+}
+.viewedCard .counts {
+  opacity: var(--opacity-muted);
+}
+.icon,
+.dir,
+.counts,
+.name {
+  transition:
+    color var(--duration-slow) var(--ease-out),
+    opacity var(--duration-slow) var(--ease-out);
+}
 
 .diff {
   display: block;
